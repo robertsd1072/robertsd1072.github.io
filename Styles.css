@@ -1,0 +1,189 @@
+/* The sidebar menu */
+.sidebar {
+  height: 100%; /* 100% Full-height */
+  width: 0; /* 0 width - change this with JavaScript */
+  position: fixed; /* Stay in place */
+  z-index: 1; /* Stay on top */
+  top: 0;
+  left: 0;
+  background-color: #111; /* Black*/
+  overflow-x: hidden; /* Disable horizontal scroll */
+  padding-top: 45px; /* Place content 45px from the top */
+  transition: 0.5s; /* 0.5 second transition effect to slide in the sidebar */
+}
+
+.sidebar a {
+  padding: 8px 8px 8px 32px;
+  text-decoration: none;
+  font-size: 25px;
+  color: #e0e0e0;
+  display: block;
+  transition: 0.3s;
+}
+
+/* When you mouse over the navigation links, change their color */
+.sidebar a:hover {
+  color: #ffffff;
+}
+
+/* The sidebar links */
+.sidebar b {
+  padding: 8px 8px 8px 32px;
+  text-decoration: none;
+  font-size: 25px;
+  color: #e0e0e0;
+  display: block;
+}
+
+/* When you mouse over the navigation links, change their color */
+.sidebar b:hover {
+  color: #e0e0e0;
+  text-decoration: none;
+}
+
+/* The sidebar links */
+.sidebar c {
+  padding: 8px 8px 8px 40px;
+  text-decoration: none;
+  font-size: 16px;
+  color: #e0e0e0;
+  display: block;
+}
+
+/* When you mouse over the navigation links, change their color */
+.sidebar c:hover {
+  color: #e0e0e0;
+  text-decoration: none;
+}
+
+/* The sidebar links */
+.sidebar d {
+  padding: 8px 8px 8px 48px;
+  text-decoration: none;
+  font-size: 13px;
+  color: #e0e0e0;
+  display: block;
+  transition: 0.3s;
+}
+
+/* When you mouse over the navigation links, change their color */
+.sidebar d:hover {
+  color: #e0e0e0;
+}
+
+
+/* Position and style the close button (top right corner) */
+.sidebar .closebtn {
+  position: absolute;
+  top: 0;
+  right: 25px;
+  font-size: 36px;
+  margin-left: 50px;
+}
+
+/* The button used to open the sidebar */
+.openbtn {
+  font-size: 20px;
+  cursor: pointer;
+  background-color: #111;
+  color: white;
+  padding: 10px 15px;
+  border: none;
+}
+
+.openbtn:hover {
+  background-color: #444;
+}
+
+/* Style page content - use this if you want to push the page content to the right when you open the side navigation */
+#main {
+  transition: margin-left .5s; /* If you want a transition effect */
+}
+
+/* On smaller screens, where height is less than 450px, change the style of the sidenav (less padding and a smaller font size) */
+@media screen and (max-height: 450px) {
+  .sidebar {padding-top: 15px;}
+  .sidebar a {font-size: 18px;}
+}
+
+/* Style for background of progress bars */
+#myProgress {
+  width: 100%;
+  background-color: grey;
+}
+
+/* Style for filled in progress bar for land discovery */
+#land {
+  width: 0%;
+  height: 30px;
+  background-color: green;
+  text-align: center;
+  line-height: 30px;
+  color: white;
+}
+
+/* Style for filled in progress bar for points discovery */
+#points {
+  width: 0%;
+  height: 30px;
+  background-color: green;
+  text-align: center;
+  line-height: 30px;
+  color: white;
+}
+
+/* Style for filled in progress bar for points clicked */
+#pointsClicked {
+  width: 0%;
+  height: 30px;
+  background-color: green;
+  text-align: center;
+  line-height: 30px;
+  color: white;
+}
+
+/* Style for table container which holds info at top and progress bars */
+.grid-container-element { 
+  align-items: center;
+  text-align: center;
+  display: grid; 
+  grid-template-columns: 1fr 1fr; 
+  grid-gap: 20px;
+  width: 130%;
+} 
+
+/* Style for table entry which holds info */
+.grid-child-element-info { 
+  margin: 5px;  
+}
+
+/* Style for table entry which holds progess bars */
+.grid-child-element-bars { 
+  padding-left: 0px;
+  align-self: center;
+  margin: 5px;
+  width: 50%;
+}
+
+/* Style for modal dialog for the information at the points */
+.modal-content {
+  margin: 15% auto; /* 15% from the top and centered */
+  padding: 20px;
+  border: 1px solid #888;
+  width: 80%; /* Could be more or less, depending on screen size */
+}
+
+/* Style for modal dialog for which appears at the beginning */
+.non-modal {
+  display: flex; /* Hidden by default */
+  position: fixed; /* Stay in place */
+  z-index: 1; /* Sit on top */
+  height: 0px;
+  left: 0;
+  top: 0;
+  width: 100%; /* Full width */
+  height: 100%; /* Full height */
+  overflow-y: auto; /* Enable scroll if needed */
+  background-color: rgb(0,0,0); /* Fallback color */
+  background-color: rgba(0,0,0,0.4); /* Black w/ opacity */
+}

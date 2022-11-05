@@ -1,0 +1,20 @@
+Bugs:
+- Highlight spot with rotation about x is not so good
+
+- Reveal when rotated about x is not so good
+
+- Smooth land does weird thing to vertical coast with sea to the right when land moves out to the right above
+	- this only on revelation, no issue smoothing
+
+- Highlighting spot while side nav is open doesnt work
+
+
+
+Features:
+- Push land vertices out from origin based on height array
+- Smooth out ice generation
+
+- Clean up, make pretty, and elaborate on side nav information
+- Put videos for the two personal projects
+
+- Initially dont reveal sphere, then when click Im ready, animate revelation of sphere
