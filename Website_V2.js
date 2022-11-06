@@ -713,6 +713,8 @@ function glMouseMoveCallback(event)
          * ****************************************************/
         var negXrota = rotate_mat(0, 0, 0);
         var posXrota = rotate_mat(0, 0, 0);
+	    
+	console.log("curXrotat = "+curXrotat);
 
         // Send sphere to origin and set x rotation to 0
         var mat1 = matMatMult(negXrota, matMatMult(negTrans, ctm));
