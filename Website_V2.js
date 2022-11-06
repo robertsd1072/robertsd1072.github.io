@@ -691,6 +691,8 @@ function glMouseMoveCallback(event)
 
         //console.log("curXrotat = "+curXrotat);
 
+        /* *****************************************
+         * Use the below to enable rotation about x
         var negXrota = rotate_mat((-1)*curXrotat, 0, 0);
 
         curXrotat = curXrotat + (origMouseY-event.clientY)*(Math.PI/180)/(6*(2000/document.body.clientHeight));
@@ -704,7 +706,13 @@ function glMouseMoveCallback(event)
         }
 
         var posXrota = rotate_mat(curXrotat, 0, 0);
-        //var posXrota = rotate_V2((origMouseY-event.clientY)*(Math.PI/180)/(6*(2000/document.body.clientHeight)), 0, 0);
+         * ****************************************************/
+
+        /* *****************************************
+         * Use the below to disable rotation about x
+         * ****************************************************/
+        var negXrota = rotate_mat(0, 0, 0);
+        var posXrota = rotate_mat(0, 0, 0);
 
         // Send sphere to origin and set x rotation to 0
         var mat1 = matMatMult(negXrota, matMatMult(negTrans, ctm));
