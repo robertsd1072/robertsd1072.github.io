@@ -94,7 +94,7 @@ function init()
     // Allocate memory in a graphics card
     buffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-    gl.bufferData(gl.ARRAY_BUFFER, 4 * 4 * (positions.length + colors.length), gl.STATIC_DRAW);
+    gl.bufferData(gl.ARRAY_BUFFER, 4 * 4 * (to1DF32Array(positions).length + to1DF32Array(colors).length), gl.STATIC_DRAW);
     // Transfer positions and put it at the beginning of the buffer
     gl.bufferSubData(gl.ARRAY_BUFFER, 0, to1DF32Array(positions));
     // Transfer colors and put it right after positions
