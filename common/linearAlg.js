@@ -284,8 +284,6 @@ function deterOf2x2(matrixD2)
  *
  * This function turns an array of 4-element arrays a2DArray into a packed
  * 1-dimensional array of 32-bit floating-point numbers.
- *
- * NOTE: This function should not be here. It should be in your library.
  */
 function to1DF32Array(a2DArray)
 {
