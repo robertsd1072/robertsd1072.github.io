@@ -23,7 +23,7 @@ var foundSeaArr = new Float32Array([foundSea[0], foundSea[1], foundSea[2], found
                                    //,foundSea[0], foundSea[1], foundSea[2], foundSea[3], foundSea[0], foundSea[1], foundSea[2], foundSea[3], foundSea[0], foundSea[1], foundSea[2], foundSea[3]
                                    //,foundSea[0], foundSea[1], foundSea[2], foundSea[3], foundSea[0], foundSea[1], foundSea[2], foundSea[3], foundSea[0], foundSea[1], foundSea[2], foundSea[3]
                                    //,foundSea[0], foundSea[1], foundSea[2], foundSea[3], foundSea[0], foundSea[1], foundSea[2], foundSea[3], foundSea[0], foundSea[1], foundSea[2], foundSea[3]]);
-var foundLandArr = new Float32Array([foundLand[0], foundLand[1], foundLand[2], foundLand[3], foundLand[0], foundLand[1], foundLand[2], foundLand[3], foundLand[0], foundLand[1], foundLand[2], foundLand[3]]);
+//var foundLandArr = new Float32Array([foundLand[0], foundLand[1], foundLand[2], foundLand[3], foundLand[0], foundLand[1], foundLand[2], foundLand[3], foundLand[0], foundLand[1], foundLand[2], foundLand[3]]);
                                     //,foundLand[0], foundLand[1], foundLand[2], foundLand[3], foundLand[0], foundLand[1], foundLand[2], foundLand[3], foundLand[0], foundLand[1], foundLand[2], foundLand[3]
                                     //,foundLand[0], foundLand[1], foundLand[2], foundLand[3], foundLand[0], foundLand[1], foundLand[2], foundLand[3], foundLand[0], foundLand[1], foundLand[2], foundLand[3]
                                     //,foundLand[0], foundLand[1], foundLand[2], foundLand[3], foundLand[0], foundLand[1], foundLand[2], foundLand[3], foundLand[0], foundLand[1], foundLand[2], foundLand[3]]);
@@ -42,12 +42,15 @@ var highlightedSpotArr = new Float32Array([highlightedSpot[0], highlightedSpot[1
 
 var totalIndexesFound = 0;
 
+var theEntireAvg;
+var theEntireAvgIce;
+
 function sumColorsIndex(colors, index)
 {
     return colors[index][0]+colors[index][1]+colors[index][2];
 }
 
-function makeTriColor(colors, color0, color1, color2, index)
+function makeTriColor(colors, color0, color1, color2, index, color3)
 {
     try
     {
@@ -116,7 +119,7 @@ function avgCornersDiamond(arr, i, j, xLength, yLength, numLats, numLongs)
             //console.log(Math.floor(j+yLength/2)+" was not < "+numLongs+" so instead trying "+Math.floor(i)+", "+(Math.floor(j+yLength/2)-numLongs));
             //console.log("That value is "+heights[Math.floor(i)][Math.floor(j+yLength/2)-numLongs]);
             //avg += heights[Math.floor(i)][Math.floor(j+yLength/2)-numLongs];
-            avg = avg*1.25;
+            //avg = avg*1.25;
         }
         
         if (Math.floor(j-yLength/2) > -1)
@@ -125,7 +128,7 @@ function avgCornersDiamond(arr, i, j, xLength, yLength, numLats, numLongs)
         {
             //console.log(Math.floor(j+yLength/2)+" was not > -1 so instead trying "+(numLongs-Math.floor(j-yLength/2)));
             //avg += heights[Math.floor(i)][numLongs-Math.floor(j-yLength/2)];
-            avg = avg*1.25;
+            //avg = avg*1.25;
         }
     }
     catch (e)
@@ -180,9 +183,9 @@ function quickUpdateColor(offset, color1, color2, color3)
     gl.bufferSubData(gl.ARRAY_BUFFER, (4 * 4 * positions.length)+(4 * 4 * (offset)), new Float32Array([color1, color2, color3, 1, color1, color2, color3, 1, color1, color2, color3, 1]));
 }
 
-function pointInView(i, j, origX, origY)
+function pointInView(i, j, origX, origY, radius)
 {
-    if (1 > Math.pow(j-origX, 2)/Math.pow(60, 2) + Math.pow(i-origY, 2)/Math.pow(60, 2))
+    if (1 > Math.pow(j-origX, 2)/Math.pow(radius, 2) + Math.pow(i-origY, 2)/Math.pow(radius, 2))
     {//Standard cirle which looks best when i is at the equator
         return true;
     }
@@ -224,8 +227,8 @@ function pointInView(i, j, origX, origY)
                 amount = Math.pow(((i)*1200000000), 1/6);
                 if (i > origY-60 && i < origY-50)
                     amount-=((i-10)*-3)+28;
-                if (i < origY && i > origY-16)
-                    amount-=((i-(origY-35))/2.5)-8;
+                if (i < origY+5 && i > origY-16)
+                    amount-=((i-(/*origY*/70-35))/2.5)-8;
             }
             else if (origY < 68 && origY > 63) // 67 to 64
             {
@@ -282,13 +285,13 @@ function pointInView(i, j, origX, origY)
     return false;
 }
 
-function revealSphere(origX, origY, which)
+function revealSphere(origX, origY, which, radius)
 {
     for (var i=0; i<colorsIndexes.length; i++)
     {
         for (var j=0; j<colorsIndexes[i].length; j++)
         {
-            if (pointInView(i, j, origX, origY))
+            if (pointInView(i, j, origX, origY, radius))
             {
                 var indexInColor;
                 var only1Tri = false;
@@ -337,7 +340,18 @@ function revealSphere(origX, origY, which)
                     { // Is notFoundLand, needs changing to foundLand
                         totalIndexesFound += (1/4);
 
-                        makeTriColor(colors, foundLand[0], foundLand[1], foundLand[2], indexInColor);
+                        var height = ((heights[i][j]-theEntireAvg*1.15)/1.5);
+                        if (heights[i][j] > theEntireAvg*1.3)// && (i > 29 && i < 148))
+                            height = ((heights[i][j]-theEntireAvg*1.15)/1.2);
+                        if (heights[i][j] > theEntireAvg*1.45)// && (i > 29 && i < 148))
+                            height = ((heights[i][j]-theEntireAvg*1.15)/1.05);
+
+                        if (height > 1-foundLand[1])
+                            height = 1-foundLand[1];
+
+                        var foundLandArr = new Float32Array([foundLand[0], foundLand[1]+height, foundLand[2], foundLand[3], foundLand[0], foundLand[1]+height, foundLand[2], foundLand[3], foundLand[0], foundLand[1]+height, foundLand[2], foundLand[3]]);
+
+                        makeTriColor(colors, foundLand[0], foundLand[1]+height, foundLand[2], indexInColor);
                         if (which != "init")
                             gl.bufferSubData(gl.ARRAY_BUFFER, (4 * 4 * positions.length)+(4 * 4 * (indexInColor)), foundLandArr);
 
@@ -356,7 +370,10 @@ function revealSphere(origX, origY, which)
                     }
                     else if (colors[indexInColor][0] == notfoundIce[0] && colors[indexInColor][1] == notfoundIce[1] && colors[indexInColor][2] == notfoundIce[2])
                     { // Is notFoundLand, needs changing to foundLand
-                        totalIndexesFound += (1/4);
+                        if (!only1Tri)
+                            totalIndexesFound += (1/4);
+                        else
+                            totalIndexesFound++;
 
                         makeTriColor(colors, foundIce[0], foundIce[1], foundIce[2], indexInColor);
                         if (which != "init")
@@ -625,6 +642,7 @@ function makePositionsAndColors(radius)
     heights[0][numLongs-1] = 0;
     heights[numLats-1][numLongs-1] = 0;
 
+
     for (var j=0; j<numLongs; j++)
     {
         iceHeights[0][j] = 0;
@@ -654,16 +672,20 @@ function makePositionsAndColors(radius)
     var yLength = numLongs-1;
     var cur_range = 1;
 
-    var theEntireAvg = initHeightsArray(heights, xLength, yLength, cur_range, numLats, numLongs);
-    var theEntireAvgIce = initHeightsArray(iceHeights, xLength, yLength, cur_range, numLats, numLongs);
+    theEntireAvg = initHeightsArray(heights, xLength, yLength, cur_range, numLats, numLongs);
+    theEntireAvgIce = initHeightsArray(iceHeights, xLength, yLength, cur_range, numLats, numLongs);
 
     theEntireAvg = theEntireAvg/(numLats*numLongs);
     theEntireAvgIce = theEntireAvgIce/(numLats*numLongs);
+
+    cleanUpHeights(numLats, numLongs);
     /* ******************************************************************************************
      * END Initialize heights of each 1x1 square
      *     Used for telling whether something is land or sea
      * ******************************************************************************************/
 
+    var pushIce = 0;//0.01;
+    var newIceRadius = radius+pushIce;
 
     var numLevels = 180/sphereDegsPerLat;
 
@@ -673,7 +695,7 @@ function makePositionsAndColors(radius)
     for (var j=0; j<1; j++)
 	{
 		var degsPerIter = sphereDegsPerLong;
-		var firstLvlRadius = radius*Math.cos((90-(90/(numLevels/2))) * (Math.PI/180));
+		var firstLvlRadius = newIceRadius*Math.cos((90-(90/(numLevels/2))) * (Math.PI/180));
 
 		for (var i=0; i<360; i+=degsPerIter)
 		{
@@ -689,11 +711,11 @@ function makePositionsAndColors(radius)
 			//console.log("AngleDown: "+angleDown);
 			var radiansDown = angleDown * (Math.PI/180);
 
-            //console.log("Pushing top or bottom");
+            //console.log("Pushing top");
 
-			positions.push([0, radius, 0, 1.0]);
-			positions.push([firstLvlRadius*Math.cos(radians2), radius*Math.sin(radiansDown), firstLvlRadius*Math.sin(radians2), 1.0]);
-			positions.push([firstLvlRadius*Math.cos(radians1), radius*Math.sin(radiansDown), firstLvlRadius*Math.sin(radians1), 1.0]);
+			positions.push([0, newIceRadius, 0, 1.0]);
+			positions.push([firstLvlRadius*Math.cos(radians2), newIceRadius*Math.sin(radiansDown), firstLvlRadius*Math.sin(radians2), 1.0]);
+			positions.push([firstLvlRadius*Math.cos(radians1), newIceRadius*Math.sin(radiansDown), firstLvlRadius*Math.sin(radians1), 1.0]);
 		}
 	}
     /* ******************************************************************************************
@@ -704,6 +726,8 @@ function makePositionsAndColors(radius)
 	/* ******************************************************************************************
      * START Makes each ring of rectangles
      * ******************************************************************************************/
+    var rowIndex = 0;
+
 	for (var i=90-sphereDegsPerLat; i>(-90+sphereDegsPerLat); i-=sphereDegsPerLat)
 	{
 		var angle1 = i;
@@ -735,23 +759,158 @@ function makePositionsAndColors(radius)
 	        var radiansA = angleA * (Math.PI/180);
             var radiansC = (angleA+((angleB-angleA)/2)) * (Math.PI/180);
 	        var radiansB = angleB * (Math.PI/180);
-            //Left side square: top left, bottom left, middle
-            positions.push([top_radius*Math.cos(radiansB), top_y, top_radius*Math.sin(radiansB), 1.0]);
-            positions.push([bottom_radius*Math.cos(radiansB), bottom_y, bottom_radius*Math.sin(radiansB), 1.0]);
-            positions.push([mid_radius*Math.cos(radiansC), mid_y, mid_radius*Math.sin(radiansC), 1.0]);
-            //Top side square: top right, top left, middle
-            positions.push([top_radius*Math.cos(radiansA), top_y, top_radius*Math.sin(radiansA), 1.0]);
-            positions.push([top_radius*Math.cos(radiansB), top_y, top_radius*Math.sin(radiansB), 1.0]);
-            positions.push([mid_radius*Math.cos(radiansC), mid_y, mid_radius*Math.sin(radiansC), 1.0]);
-            //Right side square: top right, middle, bottom right
-            positions.push([top_radius*Math.cos(radiansA), top_y, top_radius*Math.sin(radiansA), 1.0]);
-            positions.push([mid_radius*Math.cos(radiansC), mid_y, mid_radius*Math.sin(radiansC), 1.0]);
-            positions.push([bottom_radius*Math.cos(radiansA), bottom_y, bottom_radius*Math.sin(radiansA), 1.0]);
-            //Bottom side square: bottom right, middle, bottom left
-            positions.push([bottom_radius*Math.cos(radiansA), bottom_y, bottom_radius*Math.sin(radiansA), 1.0]);
-            positions.push([mid_radius*Math.cos(radiansC), mid_y, mid_radius*Math.sin(radiansC), 1.0]);
-            positions.push([bottom_radius*Math.cos(radiansB), bottom_y, bottom_radius*Math.sin(radiansB), 1.0]);
+
+            var pushIceX = 0;//pushIce * Math.cos(radians2);
+            var pushIceY = 0;//pushIce * Math.cos(radiansDown);
+            var pushIceZ = 0;//pushIce * Math.sin(radians2);
+
+            
+            if ( (heights[rowIndex][j] > theEntireAvg*1.15) || (iceHeights[rowIndex][j] < theEntireAvgIce*0.5 && (rowIndex < 50 || rowIndex > 127)) )
+            {
+                var newLandRadiusMid;
+                var newLandRadiusTopLeft;
+                var newLandRadiusTopRight;
+                var newLandRadiusBottomRight;
+                var newLandRadiusBottomLeft;
+
+                var topLeft_y;
+                var topRight_y;
+                var bottomRight_y;
+                var bottomLeft_y;
+
+                var topLeft_radius;
+                var topRight_radius;
+                var bottomRight_radius;
+                var bottomLeft_radius;
+
+                if (heights[rowIndex][j] > theEntireAvg*1.15)
+                {
+                    var sca = 4;
+                    if (heights[rowIndex][j] > theEntireAvg*1.3)// && (rowIndex > 29 && rowIndex < 148))
+                        sca = 3;
+                    if (heights[rowIndex][j] > theEntireAvg*1.45)// && (rowIndex > 29 && rowIndex < 148))
+                        sca = 2.5;
+
+                    //Push land locations, add height (distance from 0,0,0) from heights array, adjust variables
+                    newLandRadiusMid = radius+((heights[rowIndex][j]-theEntireAvg*1.15)/3);//sca);
+                    newLandRadiusTopLeft = radius+getAvgCorner(rowIndex, j, "topLeft", sca);//((getAvgCorner(rowIndex, j, "topLeft")-theEntireAvg*1.15)/sca);
+                    newLandRadiusTopRight = radius+getAvgCorner(rowIndex, j, "topRight", sca);//((getAvgCorner(rowIndex, j, "topRight")-theEntireAvg*1.15)/sca);
+                    newLandRadiusBottomRight = radius+getAvgCorner(rowIndex, j, "bottomRight", sca);//((getAvgCorner(rowIndex, j, "bottomRight")-theEntireAvg*1.15)/sca);
+                    newLandRadiusBottomLeft = radius+getAvgCorner(rowIndex, j, "bottomLeft", sca);//((getAvgCorner(rowIndex, j, "bottomLeft")-theEntireAvg*1.15)/sca);
+
+                    if (iceHeights[rowIndex][j] < theEntireAvgIce*0.5 && (rowIndex < 50 || rowIndex > 127))
+                    {
+                        if ((rowIndex == 0 || rowIndex == 178) || 
+                            ((iceHeights[rowIndex][j] < theEntireAvgIce*0.5 && (rowIndex < 50 || rowIndex > 127)) && 
+                             (rowIndex > 0 && rowIndex < 177 && j > 1 && j < 358) &&
+                             (iceHeights[rowIndex-1][j] < theEntireAvgIce*0.5 && iceHeights[rowIndex+1][j] < theEntireAvgIce*0.5 && iceHeights[rowIndex][j+1] < theEntireAvgIce*0.5 && iceHeights[rowIndex][j-1] < theEntireAvgIce*0.5) ))
+                        {
+                            if (newLandRadiusMid < radius+pushIce)
+                                newLandRadiusMid = radius+pushIce;
+                            if (newLandRadiusTopLeft < radius+pushIce)
+                                newLandRadiusTopLeft = radius+pushIce;
+                            if (newLandRadiusTopRight < radius+pushIce)
+                                newLandRadiusTopRight = radius+pushIce;
+                            if (newLandRadiusBottomRight < radius+pushIce)
+                                newLandRadiusBottomRight = radius+pushIce;
+                            if (newLandRadiusBottomLeft < radius+pushIce)
+                                newLandRadiusBottomLeft = radius+pushIce;
+                        }
+                    }
+                }
+                else
+                {
+                    //Push ice locations, add height (distance from 0,0,0) of 0.01, adjust variables
+                    newLandRadiusMid = radius+pushIce;//getAvgCornerIce(rowIndex, j, "middle");
+                    newLandRadiusTopLeft = radius+getAvgCornerIce(rowIndex, j, "topLeft");            //getAvgCornerIce is defined in TransformationFunctions.js at the bottom
+                    newLandRadiusTopRight = radius+getAvgCornerIce(rowIndex, j, "topRight");
+                    newLandRadiusBottomRight = radius+getAvgCornerIce(rowIndex, j, "bottomRight");
+                    newLandRadiusBottomLeft = radius+getAvgCornerIce(rowIndex, j, "bottomLeft");
+                }
+
+                mid_y = newLandRadiusMid*Math.sin(radians1+((radians2-radians1)/2));
+                topLeft_y = newLandRadiusTopLeft*Math.sin(radians1);
+                topRight_y = newLandRadiusTopRight*Math.sin(radians1);
+                bottomRight_y = newLandRadiusBottomRight*Math.sin(radians2);
+                bottomLeft_y = newLandRadiusBottomLeft*Math.sin(radians2);
+                
+                mid_radius = newLandRadiusMid*Math.cos(radians1+((radians2-radians1)/2));
+                topLeft_radius = newLandRadiusTopLeft*Math.cos(radians1);
+                topRight_radius = newLandRadiusTopRight*Math.cos(radians1);
+                bottomRight_radius = newLandRadiusBottomRight*Math.cos(radians2);
+                bottomLeft_radius = newLandRadiusBottomLeft*Math.cos(radians2);
+
+                //Left side square: top left, bottom left, middle
+                positions.push([topLeft_radius*Math.cos(radiansB), topLeft_y, topLeft_radius*Math.sin(radiansB), 1.0]);
+                positions.push([bottomLeft_radius*Math.cos(radiansB), bottomLeft_y, bottomLeft_radius*Math.sin(radiansB), 1.0]);
+                positions.push([mid_radius*Math.cos(radiansC), mid_y, mid_radius*Math.sin(radiansC), 1.0]);
+                //Top side square: top right, top left, middle
+                positions.push([topRight_radius*Math.cos(radiansA), topRight_y, topRight_radius*Math.sin(radiansA), 1.0]);
+                positions.push([topLeft_radius*Math.cos(radiansB), topLeft_y, topLeft_radius*Math.sin(radiansB), 1.0]);
+                positions.push([mid_radius*Math.cos(radiansC), mid_y, mid_radius*Math.sin(radiansC), 1.0]);
+                //Right side square: top right, middle, bottom right
+                positions.push([topRight_radius*Math.cos(radiansA), topRight_y, topRight_radius*Math.sin(radiansA), 1.0]);
+                positions.push([mid_radius*Math.cos(radiansC), mid_y, mid_radius*Math.sin(radiansC), 1.0]);
+                positions.push([bottomRight_radius*Math.cos(radiansA), bottomRight_y, bottomRight_radius*Math.sin(radiansA), 1.0]);
+                //Bottom side square: bottom right, middle, bottom left
+                positions.push([bottomRight_radius*Math.cos(radiansA), bottomRight_y, bottomRight_radius*Math.sin(radiansA), 1.0]);
+                positions.push([mid_radius*Math.cos(radiansC), mid_y, mid_radius*Math.sin(radiansC), 1.0]);
+                positions.push([bottomLeft_radius*Math.cos(radiansB), bottomLeft_y, bottomLeft_radius*Math.sin(radiansB), 1.0]);
+            }
+            else 
+            {
+                /*if (iceHeights[rowIndex][j] < theEntireAvgIce*0.5 && (rowIndex < 50 || rowIndex > 127))
+                {
+                    //Push ice locations, add height (distance from 0,0,0) of 0.01, adjust variables
+                    top_y = newIceRadius*Math.sin(radians1);
+                    mid_y = newIceRadius*Math.sin(radians1+((radians2-radians1)/2));
+                    bottom_y = newIceRadius*Math.sin(radians2);
+
+                    top_radius = newIceRadius*Math.cos(radians1);
+                    mid_radius = newIceRadius*Math.cos(radians1+((radians2-radians1)/2));
+                    bottom_radius = newIceRadius*Math.cos(radians2);
+                }
+                else
+                {
+                    //Push sea locations, no change in location, reset variables
+                    top_y = radius*Math.sin(radians1);
+                    mid_y = radius*Math.sin(radians1+((radians2-radians1)/2));
+                    bottom_y = radius*Math.sin(radians2);
+
+                    top_radius = radius*Math.cos(radians1);
+                    mid_radius = radius*Math.cos(radians1+((radians2-radians1)/2));
+                    bottom_radius = radius*Math.cos(radians2);
+                }*/
+
+                top_y = radius*Math.sin(radians1);
+                mid_y = radius*Math.sin(radians1+((radians2-radians1)/2));
+                bottom_y = radius*Math.sin(radians2);
+
+                top_radius = radius*Math.cos(radians1);
+                mid_radius = radius*Math.cos(radians1+((radians2-radians1)/2));
+                bottom_radius = radius*Math.cos(radians2);
+
+                //Left side square: top left, bottom left, middle
+                positions.push([top_radius*Math.cos(radiansB), top_y, top_radius*Math.sin(radiansB), 1.0]);
+                positions.push([bottom_radius*Math.cos(radiansB), bottom_y, bottom_radius*Math.sin(radiansB), 1.0]);
+                positions.push([mid_radius*Math.cos(radiansC), mid_y, mid_radius*Math.sin(radiansC), 1.0]);
+                //Top side square: top right, top left, middle
+                positions.push([top_radius*Math.cos(radiansA), top_y, top_radius*Math.sin(radiansA), 1.0]);
+                positions.push([top_radius*Math.cos(radiansB), top_y, top_radius*Math.sin(radiansB), 1.0]);
+                positions.push([mid_radius*Math.cos(radiansC), mid_y, mid_radius*Math.sin(radiansC), 1.0]);
+                //Right side square: top right, middle, bottom right
+                positions.push([top_radius*Math.cos(radiansA), top_y, top_radius*Math.sin(radiansA), 1.0]);
+                positions.push([mid_radius*Math.cos(radiansC), mid_y, mid_radius*Math.sin(radiansC), 1.0]);
+                positions.push([bottom_radius*Math.cos(radiansA), bottom_y, bottom_radius*Math.sin(radiansA), 1.0]);
+                //Bottom side square: bottom right, middle, bottom left
+                positions.push([bottom_radius*Math.cos(radiansA), bottom_y, bottom_radius*Math.sin(radiansA), 1.0]);
+                positions.push([mid_radius*Math.cos(radiansC), mid_y, mid_radius*Math.sin(radiansC), 1.0]);
+                positions.push([bottom_radius*Math.cos(radiansB), bottom_y, bottom_radius*Math.sin(radiansB), 1.0]);
+            }
+
+            
 		}
+        rowIndex++;
 	}
     /* ******************************************************************************************
      * END Makes each ring of rectangles
@@ -764,7 +923,7 @@ function makePositionsAndColors(radius)
     for (var j=0; j<1; j++)
     {
         var degsPerIter = sphereDegsPerLong;
-        var firstLvlRadius = radius*Math.cos((90-(90/(numLevels/2))) * (Math.PI/180));
+        var firstLvlRadius = newIceRadius*Math.cos((90-(90/(numLevels/2))) * (Math.PI/180));
 
         for (var i=0; i<360; i+=degsPerIter)
         {
@@ -782,9 +941,9 @@ function makePositionsAndColors(radius)
 
             //console.log("Pushing top or bottom");
 
-            positions.push([firstLvlRadius*Math.cos(radians2), radius*(-1)*Math.sin(radiansDown), firstLvlRadius*Math.sin(radians2), 1.0]);
-            positions.push([0, radius*(-1), 0, 1.0]);
-            positions.push([firstLvlRadius*Math.cos(radians1), radius*(-1)*Math.sin(radiansDown), firstLvlRadius*Math.sin(radians1), 1.0]);
+            positions.push([firstLvlRadius*Math.cos(radians2), newIceRadius*(-1)*Math.sin(radiansDown), firstLvlRadius*Math.sin(radians2), 1.0]);
+            positions.push([0, newIceRadius*(-1), 0, 1.0]);
+            positions.push([firstLvlRadius*Math.cos(radians1), newIceRadius*(-1)*Math.sin(radiansDown), firstLvlRadius*Math.sin(radians1), 1.0]);
         }
     }
     /* ******************************************************************************************
@@ -842,7 +1001,7 @@ function makePositionsAndColors(radius)
                     colors.push([notFoundLand[0], notFoundLand[1], notFoundLand[2], notFoundLand[3]]);
                     colors.push([notFoundLand[0], notFoundLand[1], notFoundLand[2], notFoundLand[3]]);
 
-                    if (k == 0)
+                    if (k == 0 && i > 40 && i < 140)
                         listGreenCoords.push([i+1, j]);
                 }
                 else
@@ -977,6 +1136,8 @@ function makePositionsAndColors(radius)
         }
     }*/
 
+    var coordsSpot = [];
+
     for (var i=0; i<6; i++)
     {
         var ranIndex = Math.floor(Math.random()*listGreenCoords.length);
@@ -984,7 +1145,14 @@ function makePositionsAndColors(radius)
         var indexI = listGreenCoords[ranIndex][0];
         var indexJ = listGreenCoords[ranIndex][1];
 
-        makeSpot(colors, indexI, indexJ, i);
+        if (spotCoordsNotNearAnother(coordsSpot, indexI, indexJ))
+        {
+            coordsSpot.push([indexI, indexJ]);
+
+            makeSpot(colors, indexI, indexJ, i);
+        }
+        else
+            i--;
     }
 
     var coastTiles = [];
@@ -1043,19 +1211,41 @@ function makePositionsAndColors(radius)
         }
     }
 
-    //makeSmooth(coastTilesIce, "ice", "land");
-    //makeSmooth(coastTilesIce, "ice", "ice");
+    makeSmooth(coastTilesIce, "ice", "ice");
 
     // This one should be used
-    revealSphere(88, 89, "init");
+    //revealSphere(88, 89, "init");
     
     // This one is for testing
     //revealSphere(88, 70, "init");
+
+    //positions.push([0, 0, 1.3, 1]);
+    //positions.push([-0.05, -0.1, 1.3, 1]);
+    //positions.push([0.05, -0.1, 1.3, 1]);
+
+    //colors.push([0, 0, 0, 1]);
+    //colors.push([0, 0, 0, 1]);
+    //colors.push([0, 0, 0, 1]);
+}
+
+function spotCoordsNotNearAnother(coordsSpot, indexI, indexJ)
+{
+    for (var i=0; i<coordsSpot.length; i++)
+    {
+        //console.log("Dif u = "+Math.abs(indexI-coordsSpot[i][0])+" and dif j = "+Math.abs(indexJ-coordsSpot[i][1]));
+        if (Math.abs(indexI-coordsSpot[i][0]) < 10 && Math.abs(indexJ-coordsSpot[i][1]) < 10)
+        {
+            console.log("Spot was close to another");
+            return false;
+        }
+    }
+
+    return true;
 }
 
 function makeSmooth(arr, which, checkWhich)
 {
-    var makeToThis = [notFoundLand[0], notFoundLand[1], notFoundLand[2]];//[1, 1, 0];//
+    var makeToThis = [notFoundLand[0], notFoundLand[1], notFoundLand[2]];//[1, 1, 0];//[0.86, 0.7922, 0.5412];//
     if (which == "ice")
         makeToThis = [notfoundIce[0], notfoundIce[1], notfoundIce[2]];
 
@@ -1075,13 +1265,19 @@ function makeSmooth(arr, which, checkWhich)
         var row = arr[i][0];
         var col = arr[i][1];
 
-        if (colors[colorsIndexes[row][col+1][0]][0] == checkThis[0] && colors[colorsIndexes[row][col+1][0]][1] == checkThis[1] && colors[colorsIndexes[row][col+1][0]][2] == checkThis[2])
+        if (colors[colorsIndexes[row][col+1][0]][0] == checkThis[0] && colors[colorsIndexes[row][col+1][0]][1] == checkThis[1] && colors[colorsIndexes[row][col+1][0]][2] == checkThis[2] &&
+            colors[colorsIndexes[row][col+1][1]][0] == checkThis[0] && colors[colorsIndexes[row][col+1][1]][1] == checkThis[1] && colors[colorsIndexes[row][col+1][1]][2] == checkThis[2] &&
+            colors[colorsIndexes[row][col+1][2]][0] == checkThis[0] && colors[colorsIndexes[row][col+1][2]][1] == checkThis[1] && colors[colorsIndexes[row][col+1][2]][2] == checkThis[2] &&
+            colors[colorsIndexes[row][col+1][3]][0] == checkThis[0] && colors[colorsIndexes[row][col+1][3]][1] == checkThis[1] && colors[colorsIndexes[row][col+1][3]][2] == checkThis[2] )
         {
             countNeighbors++;
             makeTriColor(colors, makeToThis[0], makeToThis[1], makeToThis[2], colorsIndexes[arr[i][0]][arr[i][1]][0]);
         }
 
-        if (colors[colorsIndexes[row-1][col][0]][0] == checkThis[0] && colors[colorsIndexes[row-1][col][0]][1] == checkThis[1] && colors[colorsIndexes[row-1][col][0]][2] == checkThis[2])
+        if (colors[colorsIndexes[row-1][col][0]][0] == checkThis[0] && colors[colorsIndexes[row-1][col][0]][1] == checkThis[1] && colors[colorsIndexes[row-1][col][0]][2] == checkThis[2] &&
+            colors[colorsIndexes[row-1][col][1]][0] == checkThis[0] && colors[colorsIndexes[row-1][col][1]][1] == checkThis[1] && colors[colorsIndexes[row-1][col][1]][2] == checkThis[2] &&
+            colors[colorsIndexes[row-1][col][2]][0] == checkThis[0] && colors[colorsIndexes[row-1][col][2]][1] == checkThis[1] && colors[colorsIndexes[row-1][col][2]][2] == checkThis[2] &&
+            colors[colorsIndexes[row-1][col][3]][0] == checkThis[0] && colors[colorsIndexes[row-1][col][3]][1] == checkThis[1] && colors[colorsIndexes[row-1][col][3]][2] == checkThis[2] )
         {
             countNeighbors++;
             makeTriColor(colors, makeToThis[0], makeToThis[1], makeToThis[2], colorsIndexes[arr[i][0]][arr[i][1]][1]);
@@ -1121,4 +1317,127 @@ function makeSmooth(arr, which, checkWhich)
             makeTriColor(colors, makeToThis[0], makeToThis[1], makeToThis[2], colorsIndexes[arr[i][0]][arr[i][1]][3]);
         }
     }
+}
+
+function cleanUpHeights(rowLength, colLength)
+{
+    // Brings the phrase "Ice caps" to life
+    // Attempts: "Clean up ice"
+    /*for (var i=0; i<10; i++)
+    {
+        for (var j=0; j<colLength; j++)
+        {
+            if (heights[i][j] > theEntireAvg*1.15)
+            {
+                var k;
+                for (k=i; iceHeights[k+1][j] < theEntireAvgIce*0.5; k++) {}
+
+                var heightAtBottom = heights[k][j];
+                var heightAtTop = theEntireAvg*1.15;
+
+                var lowest = k;
+
+                var dif = Math.abs(heightAtBottom-heightAtTop)/k;
+
+                for (; k>-1; k--)
+                {
+                    heights[k][j] = (((-1)*dif*Math.abs(k-lowest))+heightAtBottom)+(Math.random()*0.01);
+                }
+            }
+        }
+    }*/
+
+
+    // Attempts: "Clean up grid of land holes"
+    var avgOfTheAvg = 0;
+    var num = 0;
+    for (var i=1; i<rowLength-1; i++)
+    {
+        for (var j=1; j<colLength-1; j++)
+        {
+            if (heights[i][j] > theEntireAvg*1.15)
+            {
+                avgOfTheAvg+=isOutlier(i, j);
+                num++;
+            }
+        }
+    }
+    avgOfTheAvg = avgOfTheAvg/num;
+    //console.log("avgOfTheAvg = "+avgOfTheAvg);
+
+    for (var i=1; i<rowLength-1; i++)
+    {
+        for (var j=1; j<colLength-1; j++)
+        {
+            if (heights[i][j] > theEntireAvg*1.15)
+            {
+                if (Math.abs(isOutlier(i, j)-avgOfTheAvg) > 0.005)
+                    heights[i][j] = isOutlier(i, j);
+                if (Math.abs(isOutlier2(i, j)-avgOfTheAvg) > 0.005)
+                    heights[i][j] = isOutlier2(i, j);
+            }
+        }
+    }
+
+    for (var i=2; i<rowLength-2; i++)
+    {
+        for (var j=2; j<colLength-2; j++)
+        {
+            if (heights[i][j] <= theEntireAvg*1.15)
+            {
+                var countSeaNeighbors = 0;
+                if (heights[i-1][j] <= theEntireAvg*1.15)
+                    countSeaNeighbors++;
+                if (heights[i+1][j] <= theEntireAvg*1.15)
+                    countSeaNeighbors++;
+                if (heights[i][j+1] <= theEntireAvg*1.15)
+                    countSeaNeighbors++;
+                if (heights[i][j-1] <= theEntireAvg*1.15)
+                    countSeaNeighbors++;
+
+                if (countSeaNeighbors < 2)
+                {
+                    var crossAvg = (heights[i][j]+heights[i-1][j]+heights[i+1][j]+heights[i][j-1]+heights[i][j+1])/5;
+                    var surroundingAvg = (heights[i-1][j-1]+heights[i+1][j+1]+heights[i+1][j-1]+heights[i-1][j+1]
+                                         +heights[i-2][j]+heights[i-2][j+1]+heights[i-2][j-1]
+                                         +heights[i+2][j]+heights[i+2][j+1]+heights[i+2][j-1]
+                                         +heights[i][j-2]+heights[i+1][j-2]+heights[i-1][j-2]
+                                         +heights[i][j+2]+heights[i+1][j+2]+heights[i-1][j+2])/16;
+
+                    heights[i][j] = surroundingAvg+(Math.random()-0.5)*0.005;
+                    heights[i+1][j+1] = surroundingAvg+(Math.random()-0.5)*0.005;
+                    heights[i-1][j-1] = surroundingAvg+(Math.random()-0.5)*0.005;
+                    heights[i+1][j-1] = surroundingAvg+(Math.random()-0.5)*0.005;
+                    heights[i-1][j+1] = surroundingAvg+(Math.random()-0.5)*0.005;
+                }
+            }
+        }
+    }
+
+
+    // Attempts: "Decrease heights of islands (ice and land)"
+    for (var i=1; i<rowLength-1; i++)
+    {
+        for (var j=1; j<colLength-1; j++)
+        {
+            if (heights[i][j] > theEntireAvg*1.15)
+            {
+                if (heights[i+1][j] <= theEntireAvg*1.15 || heights[i-1][j] <= theEntireAvg*1.15 || heights[i][j+1] <= theEntireAvg*1.15 || heights[i][j-1] <= theEntireAvg*1.15)
+                {
+                    //console.log("Height at "+i+", "+j+" (coast) = "+(heights[i][j]-theEntireAvg*1.15));
+                    heights[i][j] = (theEntireAvg*1.15)+0.005;
+                }
+            }
+        }
+    }
+}
+
+function isOutlier(row, col)
+{
+    return (heights[row-1][col]+heights[row+1][col]+heights[row][col-1]+heights[row][col+1])/4;
+}
+
+function isOutlier2(row, col)
+{
+    return (heights[row-1][col-1]+heights[row+1][col+1]+heights[row-1][col+1]+heights[row+1][col-1])/4;
 }
