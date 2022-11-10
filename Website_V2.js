@@ -168,6 +168,7 @@ function recreate(which)
 function display()
 {
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
     // Set the ctm
     gl.uniformMatrix4fv(ctm_location, false, to1DF32Array(ctm));
     // Draw the object
@@ -241,6 +242,8 @@ function closeNav(whichNav)
     }
 
     showingSideBar[index] = false;
+
+    widthNav = 0;
 }
 
 /* Closes one nav and opens another without transforming sphere */
@@ -363,42 +366,45 @@ function highlightSpotIfMouse(mouseX, mouseY, canvasX, canvasY, canvasZ)
             //console.log("curYrotat = "+(curYrotat/(Math.PI/180)));
             //printMat(changeCoords);
 
-            var newCanvas = matVecMult(changeCoords, [canvasX, canvasY, canvasZ, 1]);
-
-            var newTopRight = matMatMult(changeCoords, matMatMult(translate_mat(Math.sin(curYrotat)*1, 0, Math.cos(curYrotat)*1), topRight));
-
-            //positions.push([newTopRight[0][0], newTopRight[0][1], newTopRight[0][2], newTopRight[0][3]]);
-            //positions.push([newTopRight[1][0], newTopRight[1][1], newTopRight[1][2], newTopRight[1][3]]);
-            //positions.push([newTopRight[2][0], newTopRight[2][1], newTopRight[2][2], newTopRight[2][3]]);
-
-            //positions.push([newCanvas[0], newCanvas[1], newCanvas[2], 1]);
-            //positions.push([newCanvas[0]-0.05, newCanvas[1]-0.1, newCanvas[2], 1]);
-            //positions.push([newCanvas[0]+0.05, newCanvas[1]-0.1, newCanvas[2], 1]);
-
-            //console.log("Push 1x1 for spot "+(i+1));
-            
-            var biggerX = newTopRight[2][0];
-            var smallerX = newTopRight[0][0]
-            if (newTopRight[2][0] < newTopRight[0][0])
+            if (canvasZ-topRight[0][2] < 1)
             {
-                biggerX = newTopRight[0][0];
-                smallerX = newTopRight[2][0];
-            }
+                var newCanvas = matVecMult(changeCoords, [canvasX, canvasY, canvasZ, 1]);
 
-            var biggerY = newTopRight[0][1];
-            var smallerY = newTopRight[2][1];
-            if (newTopRight[0][1] < newTopRight[2][1])
-            {
-                biggerY = newTopRight[2][1];
-                smallerY = newTopRight[0][1];
-            }
+                var newTopRight = matMatMult(changeCoords, matMatMult(translate_mat(Math.sin(curYrotat)*1, 0, Math.cos(curYrotat)*1), topRight));
 
-            if ( (newCanvas[0] >= smallerX && newCanvas[0] <= biggerX)
-              && (newCanvas[1] >= smallerY && newCanvas[1] <= biggerY) )
-            {
-                //console.log("           In spot "+(i+1));
-                whichSpot = i;
-                break;
+                //positions.push([newTopRight[0][0], newTopRight[0][1], newTopRight[0][2], newTopRight[0][3]]);
+                //positions.push([newTopRight[1][0], newTopRight[1][1], newTopRight[1][2], newTopRight[1][3]]);
+                //positions.push([newTopRight[2][0], newTopRight[2][1], newTopRight[2][2], newTopRight[2][3]]);
+
+                //positions.push([newCanvas[0], newCanvas[1], newCanvas[2], 1]);
+                //positions.push([newCanvas[0]-0.05, newCanvas[1]-0.1, newCanvas[2], 1]);
+                //positions.push([newCanvas[0]+0.05, newCanvas[1]-0.1, newCanvas[2], 1]);
+
+                //console.log("Push 1x1 for spot "+(i+1));
+                
+                var biggerX = newTopRight[2][0];
+                var smallerX = newTopRight[0][0]
+                if (newTopRight[2][0] < newTopRight[0][0])
+                {
+                    biggerX = newTopRight[0][0];
+                    smallerX = newTopRight[2][0];
+                }
+
+                var biggerY = newTopRight[0][1];
+                var smallerY = newTopRight[2][1];
+                if (newTopRight[0][1] < newTopRight[2][1])
+                {
+                    biggerY = newTopRight[2][1];
+                    smallerY = newTopRight[0][1];
+                }
+
+                if ( (newCanvas[0] >= smallerX && newCanvas[0] <= biggerX)
+                  && (newCanvas[1] >= smallerY && newCanvas[1] <= biggerY) )
+                {
+                    //console.log("           In spot "+(i+1));
+                    whichSpot = i;
+                    break;
+                }
             }
         }
     }
@@ -480,7 +486,7 @@ function highlightSpotIfMouse(mouseX, mouseY, canvasX, canvasY, canvasZ)
         if (whichSpot == 0)
             document.getElementById("modtext").textContent = "Click this point of interest to learn about David's professional skills";
         else if (whichSpot == 1)
-            document.getElementById("modtext").textContent = "Click this point of interest to learn about David's software skills";
+            document.getElementById("modtext").textContent = "Click this point of interest to learn about David's programming skills";
         else if (whichSpot == 2)
             document.getElementById("modtext").textContent = "Click this point of interest to learn about David's education";
         else if (whichSpot == 3)
@@ -495,6 +501,7 @@ function highlightSpotIfMouse(mouseX, mouseY, canvasX, canvasY, canvasZ)
         modal.style.left = mouseX+"px";
         modal.style.top = (mouseY-30)+"px";
 
+        //console.log("mouse "+mouseX+", "+mouseY);
     }
     else if (whichSpot == -1 && hideSpot != -1)
     {
@@ -529,6 +536,8 @@ function resizeCallback()
         canvas.width = Math.min(document.getElementById("topInfo").clientWidth, document.body.clientWidth);
     
     canvas.height = document.body.clientHeight-document.getElementById("topInfo").clientHeight;
+
+    showRefreshModal();
 
     //console.log("New width = "+canvas.width);
     //console.log("New height = "+canvas.height);
@@ -678,7 +687,6 @@ function glMouseMoveCallback(event)
 
     if (mouseMoveBool)
     {
-
         var negTrans = [[1, 0, 0, 0],
                         [0, 1, 0, 0],
                         [0, 0, 1, 0],
@@ -691,11 +699,17 @@ function glMouseMoveCallback(event)
 
         //console.log("curXrotat = "+curXrotat);
 
+        var rotation_scalar = 1.5*Math.log(curScale)+3.7;
+        if (rotation_scalar < 0.1)
+            rotation_scalar = 0.1;
+
         /* *****************************************
          * Use the below to enable rotation about x
+         
+         * ****************************************************/
         var negXrota = rotate_mat((-1)*curXrotat, 0, 0);
 
-        curXrotat = curXrotat + (origMouseY-event.clientY)*(Math.PI/180)/(6*(2000/document.body.clientHeight));
+        curXrotat = curXrotat + (origMouseY-event.clientY)*(Math.PI/180)/(rotation_scalar*(2000/document.body.clientHeight));
         if (curXrotat > (30*(Math.PI/180)))
         {
             curXrotat = (30*(Math.PI/180));
@@ -706,21 +720,20 @@ function glMouseMoveCallback(event)
         }
 
         var posXrota = rotate_mat(curXrotat, 0, 0);
-         * ****************************************************/
+        
 
         /* *****************************************
          * Use the below to disable rotation about x
-         * ****************************************************/
         var negXrota = rotate_mat(0, 0, 0);
         var posXrota = rotate_mat(0, 0, 0);
-	    
-	console.log("curXrotat = "+curXrotat);
+        * ****************************************************/
+
 
         // Send sphere to origin and set x rotation to 0
         var mat1 = matMatMult(negXrota, matMatMult(negTrans, ctm));
 
         // Apply rotation about y
-        var mat2 = rotate_V2(0, (origMouseX-event.clientX)*(Math.PI/180)/(6*(2000/document.body.clientHeight)), 0);
+        var mat2 = rotate_V2(0, (origMouseX-event.clientX)*(Math.PI/180)/(rotation_scalar*(2000/document.body.clientHeight)), 0);
         // Reapply rotation about x
         var mat3 = matMatMult(posXrota, matMatMult(mat2, mat1));
 
@@ -737,7 +750,9 @@ function glMouseMoveCallback(event)
             //console.log("Trying "+(88+((-1)*Math.floor(curYrotat/(Math.PI/180)) % 360))+", "+(89+(Math.ceil(curXrotat/(Math.PI/180)) % 360)));
             //console.log("origX = "+(88+((-1)*Math.floor(curYrotat/(Math.PI/180)) % 360))+" origY = "+(89+(Math.ceil(curXrotat/(Math.PI/180)) % 360)));
 
-            revealSphere(88+((-1)*Math.floor(curYrotat/(Math.PI/180)) % 360), 89+(Math.ceil(curXrotat/(Math.PI/180)) % 360), "na");
+            //console.log("origY = "+(89+(Math.ceil(curXrotat/(Math.PI/180)) % 360)));
+
+            revealSphere(88+((-1)*Math.floor(curYrotat/(Math.PI/180)) % 360), 89+(Math.ceil(curXrotat/(Math.PI/180)) % 360), "na", 60);
 
             document.getElementById("land").style.width = ((totalIndexesFound/64800)*100) + "%";
             document.getElementById("land").innerHTML = Math.round((totalIndexesFound/64800)*100) + "%";
@@ -754,6 +769,8 @@ function glMouseMoveCallback(event)
         }
 
         display();
+
+        highlightedSpot = -1;
     }
     else
     {
@@ -762,6 +779,8 @@ function glMouseMoveCallback(event)
          * Not 100% accurate so the code must be wrong
          * As of 11/2/2022 not used but maybe will be re-introduced
          * ******************************************************/
+        //console.log("mouse "+event.clientX+", "+event.clientY);
+
         /*var context = canvas.getContext('webgl');
         var pixels = new Uint8Array(
             4 * context.drawingBufferWidth * context.drawingBufferHeight
@@ -775,19 +794,25 @@ function glMouseMoveCallback(event)
             context.UNSIGNED_BYTE,
             pixels
         );
+
+        //document.getElementById("topInfo")
         // And here's components of a pixel on (x, y):
-        var pixelR = pixels[4 * ((event.clientY-160) * context.drawingBufferWidth + event.clientX)];
-        var pixelG = pixels[4 * ((event.clientY-160) * context.drawingBufferWidth + event.clientX) + 1];
-        var pixelB = pixels[4 * ((event.clientY-160) * context.drawingBufferWidth + event.clientX) + 2];
-        var pixelA = pixels[4 * ((event.clientY-160) * context.drawingBufferWidth + event.clientX) + 3];
+        var pixelR = pixels[4 * ((event.clientY) * context.drawingBufferWidth + event.clientX)];
+        var pixelG = pixels[4 * ((event.clientY) * context.drawingBufferWidth + event.clientX) + 1];
+        var pixelB = pixels[4 * ((event.clientY) * context.drawingBufferWidth + event.clientX) + 2];
+        var pixelA = pixels[4 * ((event.clientY) * context.drawingBufferWidth + event.clientX) + 3];
 
-        //if (pixelR != 0 || pixelG != 0 || pixelB != 0)
-            //console.log(pixelR+", "+pixelG+", "+pixelB);
+        if (pixelR == 255 && pixelG == 0 && pixelB == 0)
+        {
 
-        var foundSpotOutof255 = [255, 0, 0];
-        var foundSpotClickedOutof255 = [255, 142, 0];
+            console.log(pixelR+", "+pixelG+", "+pixelB+", "+pixelA);
+            console.log("mouse "+event.clientX+", "+event.clientY);
+        }
 
-        var pixelColor = [pixelR, pixelG, pixelB];
+        var foundSpotOutof255 = [255, 0, 0, 255];
+        var foundSpotClickedOutof255 = [255, 142, 0, 255];
+
+        var pixelColor = [pixelR, pixelG, pixelB, pixelA];
 
         //console.log(pixelR);
         //console.log(pixelG);
@@ -892,6 +917,10 @@ function glMouseMoveCallback(event)
                 //gl.bufferSubData(gl.ARRAY_BUFFER, (4 * 4 * positions.length)+(4 * 4 * (colorsIndexes[indexX][indexY][3])), new Float32Array([0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1]));
             }*/
 
+
+            /* *******************************
+             * Below is 2nd method for finding coords in canvas
+             * *******************************/
             //if (drawingMouse)
             //{
             //    positions.pop();
@@ -904,7 +933,7 @@ function glMouseMoveCallback(event)
 
             //console.log("scaleX = "+scaleX+" scaleY = "+scaleY+" curScale = "+curScale);
 
-            var canvasX = ((event.clientX) / canvas.width * 2 - 1) * scaleX/curScale;
+            var canvasX = ((event.clientX-widthNav) / canvas.width * 2 - 1) * scaleX/curScale;
             var canvasY = ((event.clientY-document.getElementById("topInfo").clientHeight) / canvas.height * -2 + 1) * scaleY/curScale;
 
             //console.log(canvasX+", "+canvasY);
@@ -1006,6 +1035,9 @@ function main()
     modal = document.getElementById("myModal");
     modal.style.display = "none";
 
+    document.getElementById("website_ready").style.display = "none";
+    document.getElementById("im_ready").style.display = "inline";
+
     /*var mat2 = transMat([[Math.cos(30*(Math.PI/180))*1, 0, Math.sin(30*(Math.PI/180))*1, 0],
                                                          [0, 1, 0, 0],
                                                          [Math.sin(30*(Math.PI/180))*1, 0, Math.cos(30*(Math.PI/180))*1, 0],
@@ -1020,4 +1052,52 @@ function main()
 
     //console.log("Them multd");
     //printMat(matMatMult(mat1, mat2));
+}
+
+function userIsReady()
+{
+    document.getElementById("modalAtBeginning").style.display = "none";
+
+    showRefreshModal();
+
+    curStep = 1;
+    numSteps = 60;
+
+    animateReady();
+}
+
+function animateReady()
+{
+    if (curStep < numSteps)
+    {
+        console.log("Animating when user is ready");
+
+        revealSphere(88, 89, "na", curStep);
+        display();
+
+        document.getElementById("land").style.width = ((totalIndexesFound/64800)*100) + "%";
+        document.getElementById("land").innerHTML = Math.round((totalIndexesFound/64800)*100) + "%";
+
+        var cntFound = 0;
+        for (var i=0; i<6; i++)
+        {
+            if (foundSpotBools[i])
+                cntFound++;
+        }
+
+        document.getElementById("points").style.width = ((cntFound/6)*100) + "%";
+        document.getElementById("points").innerHTML = cntFound+"/6";
+
+        curStep++;
+
+        requestAnimationFrame(animateReady);
+    }
+}
+
+function showRefreshModal()
+{
+    document.getElementById("refreshModal").style.display = "flex";
+    document.getElementById("refreshModal").style.position = "absolute";
+    document.getElementById("refreshModal").style.left = (document.body.clientWidth-225)+"px";
+    document.getElementById("refreshModal").style.top = (document.getElementById("topInfo").clientHeight-30)+"px";
 }
