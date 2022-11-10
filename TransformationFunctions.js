@@ -144,3 +144,105 @@ function scale_mat(scale)
            ,[0, 0, scale, 0]
            ,[0, 0, 0, 1]];
 }
+
+function getAvgCorner(i, j, which, sca)
+{
+    try
+    {
+        if (which == "topLeft")
+        {
+            if (heights[i-1][j] <= theEntireAvg*1.15 || heights[i-1][j+1] <= theEntireAvg*1.15 || heights[i][j+1] <= theEntireAvg*1.15)
+                return 0;//theEntireAvg*1.15;
+            //else if ((heights[i][j] > theEntireAvg*1.3) && (heights[i-1][j] <= theEntireAvg*1.3 || heights[i-1][j+1] <= theEntireAvg*1.3 || heights[i][j+1] <= theEntireAvg*1.3))
+            //    return (((heights[i][j]+heights[i-1][j]+heights[i-1][j+1]+heights[i][j+1])/4)-theEntireAvg*1.15)/4;
+            //else if ((heights[i][j] > theEntireAvg*1.45) && (heights[i-1][j] <= theEntireAvg*1.45 || heights[i-1][j+1] <= theEntireAvg*1.45 || heights[i][j+1] <= theEntireAvg*1.45))
+            //    return (((heights[i][j]+heights[i-1][j]+heights[i-1][j+1]+heights[i][j+1])/4)-theEntireAvg*1.15)/3;
+            else
+                return (((heights[i][j]+heights[i-1][j]+heights[i-1][j+1]+heights[i][j+1])/4)-theEntireAvg*1.15)/3;
+        }
+        else if (which == "topRight")
+        {
+            if (heights[i-1][j] <= theEntireAvg*1.15 || heights[i-1][j-1] <= theEntireAvg*1.15 || heights[i][j-1] <= theEntireAvg*1.15)
+                return 0;//theEntireAvg*1.15;
+            //else if ((heights[i][j] > theEntireAvg*1.3) && (heights[i-1][j] <= theEntireAvg*1.3 || heights[i-1][j-1] <= theEntireAvg*1.3 || heights[i][j-1] <= theEntireAvg*1.3))
+            //    return (((heights[i][j]+heights[i-1][j]+heights[i-1][j-1]+heights[i][j-1])/4)-theEntireAvg*1.15)/4;
+            //else if ((heights[i][j] > theEntireAvg*1.45) && (heights[i-1][j] <= theEntireAvg*1.45 || heights[i-1][j-1] <= theEntireAvg*1.45 || heights[i][j-1] <= theEntireAvg*1.45))
+            //    return (((heights[i][j]+heights[i-1][j]+heights[i-1][j-1]+heights[i][j-1])/4)-theEntireAvg*1.15)/3;
+            else
+                return (((heights[i][j]+heights[i-1][j]+heights[i-1][j-1]+heights[i][j-1])/4)-theEntireAvg*1.15)/3;
+        }
+        else if (which == "bottomRight")
+        {
+            if (heights[i+1][j] <= theEntireAvg*1.15 || heights[i+1][j-1] <= theEntireAvg*1.15 || heights[i][j-1] <= theEntireAvg*1.15)
+                return 0;//theEntireAvg*1.15;
+            //else if ((heights[i][j] > theEntireAvg*1.3) && (heights[i+1][j] <= theEntireAvg*1.3 || heights[i+1][j-1] <= theEntireAvg*1.3 || heights[i][j-1] <= theEntireAvg*1.3))
+            //    return (((heights[i][j]+heights[i+1][j]+heights[i+1][j-1]+heights[i][j-1])/4)-theEntireAvg*1.15)/4;
+            //else if ((heights[i][j] > theEntireAvg*1.45) && (heights[i+1][j] <= theEntireAvg*1.45 || heights[i+1][j-1] <= theEntireAvg*1.45 || heights[i][j-1] <= theEntireAvg*1.45))
+            //    return (((heights[i][j]+heights[i+1][j]+heights[i+1][j-1]+heights[i][j-1])/4)-theEntireAvg*1.15)/3;
+            else
+                return (((heights[i][j]+heights[i+1][j]+heights[i+1][j-1]+heights[i][j-1])/4)-theEntireAvg*1.15)/3;
+        }
+        else //if (which == "bottomLeft")
+        {
+            if (heights[i+1][j] <= theEntireAvg*1.15 || heights[i+1][j+1] <= theEntireAvg*1.15 || heights[i][j+1] <= theEntireAvg*1.15)
+                return 0;//theEntireAvg*1.15;
+            //else if ((heights[i][j] > theEntireAvg*1.3) && (heights[i+1][j] <= theEntireAvg*1.3 || heights[i+1][j+1] <= theEntireAvg*1.3 || heights[i][j+1] <= theEntireAvg*1.3))
+            //    return (((heights[i][j]+heights[i+1][j]+heights[i+1][j+1]+heights[i][j+1])/4)-theEntireAvg*1.15)/4;
+            //else if ((heights[i][j] > theEntireAvg*1.45) && (heights[i+1][j] <= theEntireAvg*1.45 || heights[i+1][j+1] <= theEntireAvg*1.45 || heights[i][j+1] <= theEntireAvg*1.45))
+            //    return (((heights[i][j]+heights[i+1][j]+heights[i+1][j+1]+heights[i][j+1])/4)-theEntireAvg*1.15)/3;
+            else
+                return (((heights[i][j]+heights[i+1][j]+heights[i+1][j+1]+heights[i][j+1])/4)-theEntireAvg*1.15)/3;
+        }
+    }
+    catch (e)
+    {
+        return 0;//theEntireAvg*1.15;
+    }
+}
+
+function getAvgCornerIce(i, j, which)
+{
+    try
+    {
+        if (which == "topLeft")
+        {
+            if (iceHeights[i-1][j] >= theEntireAvgIce*0.5 || iceHeights[i-1][j+1] >= theEntireAvgIce*0.5 || iceHeights[i][j+1] >= theEntireAvgIce*0.5)
+                return 0;
+            //else if (heights[i-1][j] <= theEntireAvg*1.15 || heights[i-1][j+1] <= theEntireAvg*1.15 || heights[i][j+1] <= theEntireAvg*1.15)
+            //    return 0;
+            else
+                return 0;//pushIce;
+        }
+        else if (which == "topRight")
+        {
+            if (iceHeights[i-1][j] >= theEntireAvgIce*0.5 || iceHeights[i-1][j-1] >= theEntireAvgIce*0.5 || iceHeights[i][j-1] >= theEntireAvgIce*0.5)
+                return 0;
+            //else if (heights[i-1][j] <= theEntireAvg*1.15 || heights[i-1][j-1] <= theEntireAvg*1.15 || heights[i][j-1] <= theEntireAvg*1.15)
+            //    return 0;
+            else
+                return pushIce;
+        }
+        else if (which == "bottomRight")
+        {
+            if (iceHeights[i+1][j] >= theEntireAvgIce*0.5 || iceHeights[i+1][j-1] >= theEntireAvgIce*0.5 || iceHeights[i][j-1] >= theEntireAvgIce*0.5)
+                return 0;
+            //else if (heights[i+1][j] <= theEntireAvg*1.15 || heights[i+1][j-1] <= theEntireAvg*1.15 || heights[i][j-1] <= theEntireAvg*1.15)
+            //    return 0;
+            else
+                return 0;//pushIce;
+        }
+        else //if (which == "bottomLeft")
+        {
+            if (iceHeights[i+1][j] >= theEntireAvgIce*0.5 || iceHeights[i+1][j+1] >= theEntireAvgIce*0.5 || iceHeights[i][j+1] >= theEntireAvgIce*0.5)
+                return 0;
+            //else if (heights[i+1][j] <= theEntireAvg*1.15 || heights[i+1][j+1] <= theEntireAvg*1.15 || heights[i][j+1] <= theEntireAvg*1.15)
+            //    return 0;
+            else
+                return 0;//pushIce;//(iceHeights[i][j]+iceHeights[i+1][j]+iceHeights[i+1][j+1]+iceHeights[i][j+1])/4;
+        }
+    }
+    catch (e)
+    {
+        return 0;//pushIce;//theEntireAvg*1.15;
+    }
+}
