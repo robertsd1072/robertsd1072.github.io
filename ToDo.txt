@@ -2,19 +2,16 @@ Bugs:
 - Highlight spot with rotation about x is not so good
 
 - Reveal when rotated about x is not so good
+	- Could find solution when solving above ^^
+	- If can map screen coords to canvas coords no matter rotation, can reveal sphere by passing in circle and all triangles in that circle are revealed
 
-- Smooth land does weird thing to vertical coast with sea to the right when land moves out to the right above
-	- this only on revelation, no issue smoothing
-
-- Highlighting spot while side nav is open doesnt work
-
-
+IGNORED	by not extruding ice when not land EZ
+	- Clean up ice
+	- Holes where ice, sea, and land intersect
 
 Features:
-- Push land vertices out from origin based on height array
-- Smooth out ice generation
+- Put video for the the last personal project
 
-- Clean up, make pretty, and elaborate on side nav information
-- Put videos for the two personal projects
+- Polishing
 
-- Initially dont reveal sphere, then when click Im ready, animate revelation of sphere
+- Link to PDF of resume
