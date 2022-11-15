@@ -16,7 +16,6 @@ var ctm_reset = [[1.0, 0.0, 0.0, 0.0],
                  [0.0, 0.0, 1.0, 0.0],
                  [0.0, 0.0, 0, 1.0]];
 var ctm = ctm_reset;
-var prevCtm = ctm;
 
 var degsPerSide = 0;
 
@@ -61,6 +60,8 @@ var widthNav = 0;
 
 var modal;
 
+var mouseCTM = ctm_reset;
+var lengthSphereAndOffsetMouse;
 
 function initGL(canvas)
 {
@@ -84,6 +85,8 @@ function initGL(canvas)
 function init()
 {
     makePositionsAndColors(1);
+
+    lengthSphereAndOffsetMouse = positions.length-3;
 
     // Load and compile shader programs
     shaderProgram = initShaders(gl, "vertex-shader", "fragment-shader");
@@ -147,7 +150,7 @@ function recreate(which)
     {
         buffer = gl.createBuffer();
         gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-        gl.bufferData(gl.ARRAY_BUFFER, 4 * 4 * (positions.length + colors.length), gl.STATIC_DRAW);
+        gl.bufferData(gl.ARRAY_BUFFER, 4 * 4 * (to1DF32Array(positions).length + to1DF32Array(colors).length), gl.STATIC_DRAW);
 
         // Transfer positions and put it at the beginning of the buffer
         gl.bufferSubData(gl.ARRAY_BUFFER, 0, to1DF32Array(positions));
@@ -172,7 +175,17 @@ function display()
     // Set the ctm
     gl.uniformMatrix4fv(ctm_location, false, to1DF32Array(ctm));
     // Draw the object
-    gl.drawArrays(gl.TRIANGLES, 0, positions.length*3);
+    gl.drawArrays(gl.TRIANGLES, 0, lengthSphereAndOffsetMouse);
+
+    // Set the ctm
+    gl.uniformMatrix4fv(ctm_location, false, to1DF32Array(mouseCTM));
+    // Draw the object
+    gl.drawArrays(gl.TRIANGLES, lengthSphereAndOffsetMouse, 3);
+
+    // Set the ctm
+    gl.uniformMatrix4fv(ctm_location, false, to1DF32Array(ctm));
+    // Draw the object
+    gl.drawArrays(gl.TRIANGLES, lengthSphereAndOffsetMouse+3, positions.length-(lengthSphereAndOffsetMouse+3));
 }
 
 function animate()
@@ -285,6 +298,7 @@ function calculateSizeOfSphereAndCanvas()
 
     //ctm = matMatMult(translate_mat(new_orig_x, new_orig_y, 0), scale_mat(new_scale));
     ctm = matMatMult(translate_mat(new_orig_x, new_orig_y, 0), matMatMult(scale_mat(new_scale), rotate_mat(curXrotat, curYrotat, 0)));
+    mouseCTM = ctm;
 
     display();
 
@@ -317,18 +331,6 @@ function highlightSpotIfMouse(mouseX, mouseY, canvasX, canvasY, canvasZ)
 {
     var whichSpot = -1;
 
-    /*for (var i=0; i<6; i++)
-    {
-        for (var j=0; j<spots[i].length; j++)
-        {
-            if (spots[i][j][0] == indexX && spots[i][j][1] == indexY)
-            {
-                whichSpot = i;
-                break;
-            }
-        }
-    }*/
-
     /* *********************************************************
      * START
      * Mapping mouse coords to canvas coords
@@ -353,28 +355,29 @@ function highlightSpotIfMouse(mouseX, mouseY, canvasX, canvasY, canvasZ)
             var bottomRightIndex = colorsIndexes[spotsMaxMins[i][1][0]][spotsMaxMins[i][1][1]][3];
             var bottomLeftIndex = colorsIndexes[spotsMaxMins[i][2][0]][spotsMaxMins[i][2][1]][3]+2;
 
-            var topRight = [positions[topRightIndex]     // top left
+            var topRight = [positions[topRightIndex]      // top left
+                           ,positions[bottomLeftIndex]    // bottom right
                            ,positions[bottomRightIndex]   // bottom left
-                           ,positions[bottomLeftIndex]   // bottom right
                            ,[0, 0, 0, 1]];
-
-            var changeCoords = inverMat([[Math.cos(curYrotat)*1, 0, Math.sin(curYrotat)*1, 0]
-                                        ,[0, 1, 0, 0]
-                                        ,[Math.sin(curYrotat)*1, 0, Math.cos(curYrotat)*1, 0]
-                                        ,[0, 0, 0, 1]]);
 
             //console.log("curYrotat = "+(curYrotat/(Math.PI/180)));
             //printMat(changeCoords);
 
-            if (canvasZ-topRight[0][2] < 1)
+            if (canvasZ-topRight[0][2] < 1.3)
             {
-                var newCanvas = matVecMult(changeCoords, [canvasX, canvasY, canvasZ, 1]);
+                var newCanvas = [canvasX, canvasY, canvasZ, 1];
 
-                var newTopRight = matMatMult(changeCoords, matMatMult(translate_mat(Math.sin(curYrotat)*1, 0, Math.cos(curYrotat)*1), topRight));
+                var newTopRight = topRight;
 
                 //positions.push([newTopRight[0][0], newTopRight[0][1], newTopRight[0][2], newTopRight[0][3]]);
                 //positions.push([newTopRight[1][0], newTopRight[1][1], newTopRight[1][2], newTopRight[1][3]]);
                 //positions.push([newTopRight[2][0], newTopRight[2][1], newTopRight[2][2], newTopRight[2][3]]);
+
+                //colors.push([0.5, 0, 1, 1]);
+                //colors.push([0.5, 0, 1, 1]);
+                //colors.push([0.5, 0, 1, 1]);
+
+                newTopRight = matMatMult(ctm, topRight);
 
                 //positions.push([newCanvas[0], newCanvas[1], newCanvas[2], 1]);
                 //positions.push([newCanvas[0]-0.05, newCanvas[1]-0.1, newCanvas[2], 1]);
@@ -382,21 +385,24 @@ function highlightSpotIfMouse(mouseX, mouseY, canvasX, canvasY, canvasZ)
 
                 //console.log("Push 1x1 for spot "+(i+1));
                 
-                var biggerX = newTopRight[2][0];
+                var biggerX = newTopRight[1][0];
                 var smallerX = newTopRight[0][0]
-                if (newTopRight[2][0] < newTopRight[0][0])
+                if (newTopRight[1][0] < newTopRight[0][0])
                 {
                     biggerX = newTopRight[0][0];
-                    smallerX = newTopRight[2][0];
+                    smallerX = newTopRight[1][0];
                 }
 
                 var biggerY = newTopRight[0][1];
-                var smallerY = newTopRight[2][1];
-                if (newTopRight[0][1] < newTopRight[2][1])
+                var smallerY = newTopRight[1][1];
+                if (newTopRight[0][1] < newTopRight[1][1])
                 {
-                    biggerY = newTopRight[2][1];
+                    biggerY = newTopRight[1][1];
                     smallerY = newTopRight[0][1];
                 }
+
+                //console.log("X: "+smallerX+" < "+newCanvas[0]+" < "+biggerX+" ? ");
+                //console.log("Y: "+smallerY+" < "+newCanvas[1]+" < "+biggerY+" ? ");
 
                 if ( (newCanvas[0] >= smallerX && newCanvas[0] <= biggerX)
                   && (newCanvas[1] >= smallerY && newCanvas[1] <= biggerY) )
@@ -426,11 +432,6 @@ function highlightSpotIfMouse(mouseX, mouseY, canvasX, canvasY, canvasZ)
         {
             if (i == whichSpot && foundSpotBools[whichSpot])
             {
-                //makeTriColor(colors, 1.0, 0.0, 1.0, colorsIndexes[spots[i][j][0]][spots[i][j][1]][0]);
-                //makeTriColor(colors, 1.0, 0.0, 1.0, colorsIndexes[spots[i][j][0]][spots[i][j][1]][1]);
-                //makeTriColor(colors, 1.0, 0.0, 1.0, colorsIndexes[spots[i][j][0]][spots[i][j][1]][2]);
-                //makeTriColor(colors, 1.0, 0.0, 1.0, colorsIndexes[spots[i][j][0]][spots[i][j][1]][3]);
-
                 gl.bufferSubData(gl.ARRAY_BUFFER, (4 * 4 * positions.length)+(4 * 4 * (colorsIndexes[spots[i][j][0]][spots[i][j][1]][0])), highlightedSpotArr);
                 gl.bufferSubData(gl.ARRAY_BUFFER, (4 * 4 * positions.length)+(4 * 4 * (colorsIndexes[spots[i][j][0]][spots[i][j][1]][1])), highlightedSpotArr);
                 gl.bufferSubData(gl.ARRAY_BUFFER, (4 * 4 * positions.length)+(4 * 4 * (colorsIndexes[spots[i][j][0]][spots[i][j][1]][2])), highlightedSpotArr);
@@ -444,11 +445,6 @@ function highlightSpotIfMouse(mouseX, mouseY, canvasX, canvasY, canvasZ)
 
                 if (clickedSpotArr[i])
                 {
-                    //makeTriColor(colors, 1.0, 0.588, 0.0, colorsIndexes[spots[i][j][0]][spots[i][j][1]][0]);
-                    //makeTriColor(colors, 1.0, 0.588, 0.0, colorsIndexes[spots[i][j][0]][spots[i][j][1]][1]);
-                    //makeTriColor(colors, 1.0, 0.588, 0.0, colorsIndexes[spots[i][j][0]][spots[i][j][1]][2]);
-                    //makeTriColor(colors, 1.0, 0.588, 0.0, colorsIndexes[spots[i][j][0]][spots[i][j][1]][3]);
-
                     gl.bufferSubData(gl.ARRAY_BUFFER, (4 * 4 * positions.length)+(4 * 4 * (colorsIndexes[spots[i][j][0]][spots[i][j][1]][0])), foundSpotClickedArr);
                     gl.bufferSubData(gl.ARRAY_BUFFER, (4 * 4 * positions.length)+(4 * 4 * (colorsIndexes[spots[i][j][0]][spots[i][j][1]][1])), foundSpotClickedArr);
                     gl.bufferSubData(gl.ARRAY_BUFFER, (4 * 4 * positions.length)+(4 * 4 * (colorsIndexes[spots[i][j][0]][spots[i][j][1]][2])), foundSpotClickedArr);
@@ -456,11 +452,6 @@ function highlightSpotIfMouse(mouseX, mouseY, canvasX, canvasY, canvasZ)
                 }
                 else if (foundSpotBools[i])
                 {
-                    //makeTriColor(colors, foundSpot[0], foundSpot[1], foundSpot[2], colorsIndexes[spots[i][j][0]][spots[i][j][1]][0]);
-                    //makeTriColor(colors, foundSpot[0], foundSpot[1], foundSpot[2], colorsIndexes[spots[i][j][0]][spots[i][j][1]][1]);
-                    //makeTriColor(colors, foundSpot[0], foundSpot[1], foundSpot[2], colorsIndexes[spots[i][j][0]][spots[i][j][1]][2]);
-                    //makeTriColor(colors, foundSpot[0], foundSpot[1], foundSpot[2], colorsIndexes[spots[i][j][0]][spots[i][j][1]][3]);
-
                     gl.bufferSubData(gl.ARRAY_BUFFER, (4 * 4 * positions.length)+(4 * 4 * (colorsIndexes[spots[i][j][0]][spots[i][j][1]][0])), foundSpotArr);
                     gl.bufferSubData(gl.ARRAY_BUFFER, (4 * 4 * positions.length)+(4 * 4 * (colorsIndexes[spots[i][j][0]][spots[i][j][1]][1])), foundSpotArr);
                     gl.bufferSubData(gl.ARRAY_BUFFER, (4 * 4 * positions.length)+(4 * 4 * (colorsIndexes[spots[i][j][0]][spots[i][j][1]][2])), foundSpotArr);
@@ -752,7 +743,10 @@ function glMouseMoveCallback(event)
 
             //console.log("origY = "+(89+(Math.ceil(curXrotat/(Math.PI/180)) % 360)));
 
-            revealSphere(88+((-1)*Math.floor(curYrotat/(Math.PI/180)) % 360), 89+(Math.ceil(curXrotat/(Math.PI/180)) % 360), "na", 60);
+            //revealSphere(88+((-1)*Math.floor(curYrotat/(Math.PI/180)) % 360), 89+(Math.ceil(curXrotat/(Math.PI/180)) % 360), "na", 60);
+
+            var radius = 1*curScale;
+            revealSphereV2(ctm[3][0], ctm[3][1], (radius*6/7));
 
             document.getElementById("land").style.width = ((totalIndexesFound/64800)*100) + "%";
             document.getElementById("land").innerHTML = Math.round((totalIndexesFound/64800)*100) + "%";
@@ -921,7 +915,30 @@ function glMouseMoveCallback(event)
             /* *******************************
              * Below is 2nd method for finding coords in canvas
              * *******************************/
-            //if (drawingMouse)
+            var scaleX = canvas.width/2000;
+            var scaleY = canvas.height/2000;
+
+            var canvasX = ((event.clientX-widthNav) / canvas.width * 2 - 1) * scaleX;
+            var canvasY = ((event.clientY-document.getElementById("topInfo").clientHeight) / canvas.height * -2 + 1) * scaleY;
+
+            //console.log(canvasX+", "+canvasY);
+
+            //console.log(curScale);
+
+            //console.log("curXrotat = "+curXrotat);
+            //console.log("curYrotat = "+curYrotat);
+
+            //mouseCTM = translate_mat(canvasX, canvasY, 0);
+
+            mouseCTM = [[curScale, 0, 0, 0]
+                       ,[0, curScale, 0, 0]
+                       ,[0, 0, curScale, 0]
+                       ,[ctm[3][0]+canvasX, ctm[3][1]+canvasY, 0, 1]];
+
+            highlightSpotIfMouse(event.clientX, event.clientY, mouseCTM[3][0], mouseCTM[3][1], mouseCTM[3][2]);
+
+            // This one doesn't work
+            /*if (drawingMouse)
             //{
             //    positions.pop();
             //    positions.pop();
@@ -982,7 +999,7 @@ function glMouseMoveCallback(event)
             drawingMouse = true;
             //recreate("addMore");
 
-            highlightSpotIfMouse(event.clientX, event.clientY, newTri[0][0], newTri[0][1], newTri[0][2]);
+            highlightSpotIfMouse(event.clientX, event.clientY, newTri[0][0], newTri[0][1], newTri[0][2]);*/
         }
 
         display();
@@ -1007,7 +1024,6 @@ function main()
     canvas.height = document.body.clientHeight-document.getElementById("topInfo").clientHeight;
 
     calculateSizeOfSphereAndCanvas();
-    prevCtm = ctm;
 
     canvas.onmousedown = mouseDownCallback;
 
@@ -1072,7 +1088,9 @@ function animateReady()
     {
         console.log("Animating when user is ready");
 
-        revealSphere(88, 89, "na", curStep);
+        var radius = 1*curScale;
+        revealSphereV2(curXtrans, curYtrans, (curStep/numSteps)*(radius*6/7));
+        
         display();
 
         document.getElementById("land").style.width = ((totalIndexesFound/64800)*100) + "%";
