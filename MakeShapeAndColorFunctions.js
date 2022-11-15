@@ -183,7 +183,7 @@ function quickUpdateColor(offset, color1, color2, color3)
     gl.bufferSubData(gl.ARRAY_BUFFER, (4 * 4 * positions.length)+(4 * 4 * (offset)), new Float32Array([color1, color2, color3, 1, color1, color2, color3, 1, color1, color2, color3, 1]));
 }
 
-function pointInView(i, j, origX, origY, radius)
+/*function pointInView(i, j, origX, origY, radius)
 {
     if (1 > Math.pow(j-origX, 2)/Math.pow(radius, 2) + Math.pow(i-origY, 2)/Math.pow(radius, 2))
     {//Standard cirle which looks best when i is at the equator
@@ -228,7 +228,7 @@ function pointInView(i, j, origX, origY, radius)
                 if (i > origY-60 && i < origY-50)
                     amount-=((i-10)*-3)+28;
                 if (i < origY+5 && i > origY-16)
-                    amount-=((i-(/*origY*/70-35))/2.5)-8;
+                    amount-=((i-(70-35))/2.5)-8;
             }
             else if (origY < 68 && origY > 63) // 67 to 64
             {
@@ -334,7 +334,7 @@ function revealSphere(origX, origY, which, radius)
                             gl.bufferSubData(gl.ARRAY_BUFFER, (4 * 4 * positions.length)+(4 * 4 * (colorsIndexes[i][j][1])), foundSeaArr);
                             gl.bufferSubData(gl.ARRAY_BUFFER, (4 * 4 * positions.length)+(4 * 4 * (colorsIndexes[i][j][2])), foundSeaArr);
                             gl.bufferSubData(gl.ARRAY_BUFFER, (4 * 4 * positions.length)+(4 * 4 * (colorsIndexes[i][j][3])), foundSeaArr);
-                        }*/
+                        }
                     }
                     else if (colors[indexInColor][0] == notFoundLand[0] && colors[indexInColor][1] == notFoundLand[1] && colors[indexInColor][2] == notFoundLand[2])
                     { // Is notFoundLand, needs changing to foundLand
@@ -366,7 +366,7 @@ function revealSphere(origX, origY, which, radius)
                             gl.bufferSubData(gl.ARRAY_BUFFER, (4 * 4 * positions.length)+(4 * 4 * (colorsIndexes[i][j][1])), foundLandArr);
                             gl.bufferSubData(gl.ARRAY_BUFFER, (4 * 4 * positions.length)+(4 * 4 * (colorsIndexes[i][j][2])), foundLandArr);
                             gl.bufferSubData(gl.ARRAY_BUFFER, (4 * 4 * positions.length)+(4 * 4 * (colorsIndexes[i][j][3])), foundLandArr);
-                        }*/
+                        }
                     }
                     else if (colors[indexInColor][0] == notfoundIce[0] && colors[indexInColor][1] == notfoundIce[1] && colors[indexInColor][2] == notfoundIce[2])
                     { // Is notFoundLand, needs changing to foundLand
@@ -396,7 +396,7 @@ function revealSphere(origX, origY, which, radius)
                                 gl.bufferSubData(gl.ARRAY_BUFFER, (4 * 4 * positions.length)+(4 * 4 * (colorsIndexes[i][j][2])), foundIceArr);
                                 gl.bufferSubData(gl.ARRAY_BUFFER, (4 * 4 * positions.length)+(4 * 4 * (colorsIndexes[i][j][3])), foundIceArr);
                             }
-                        }*/
+                        }
                     }
                 }
 
@@ -440,6 +440,148 @@ function revealSphere(origX, origY, which, radius)
     }
 
     //console.log("Revealed "+total);
+}*/
+
+function pointInViewV2(i, j, canvasXcenter, canvasYcenter, canvasRadius)
+{
+    var index = colorsIndexes[i][j][0]+2;
+    if (i == 0 || i == colorsIndexes.length-1)
+        index = colorsIndexes[i][j];
+
+    //console.log(positions[index]);
+
+    var position_adjusted = matVecMult(ctm, positions[index]);
+
+    var canvasX = position_adjusted[0];
+    var canvasY = position_adjusted[1];
+
+    //if ((curXrotat == (30*(Math.PI/180)) || curXrotat == (-30*(Math.PI/180))) && (i == 0 || i == colorsIndexes.length-1))
+    //    return true;
+
+    if (position_adjusted[2] > 0)
+    {
+        if (1 > Math.pow(canvasX-canvasXcenter, 2)/Math.pow(canvasRadius, 2) + Math.pow(canvasY-canvasYcenter, 2)/Math.pow(canvasRadius, 2))
+            return true;
+
+        var origX = 88+((-1)*Math.floor(curYrotat/(Math.PI/180)) % 360);
+        var origY = 89+(Math.ceil(curXrotat/(Math.PI/180)) % 360);
+
+        if ( (origY == 60 && i < origY+30 && j > (origX-(60+(i/-2+38))) && j < (origX+(60+(i/-2+38))))
+          || (origY == 119 && i > origY-30 && j > (origX-(60+(i/2-52))) && j < (origX+(60+(i/2-52)))) )
+        {// Do special circle when at top or bottom
+            return true;
+        }
+
+        if ( (origX < 60 && origY == 60 && i < origY+30 && j > (359-(60-origX))-(i/-2+38))
+          || (origX < 60 && origY == 119 && i > origY-30 && j > (359-(60-origX))+(i/-2+52)) )
+        {// Also consider other ends of array if need to for special circle where origX is close to 0
+            return true;
+        }
+
+        if ( (origX > 299 && origY == 60 && i < origY+30 && j < (0+(60-(359-origX)))+(i/-2+38))
+          || (origX > 299 && origY == 119 && i > origY-30 && j < (0+(60-(359-origX)))-(i/-2+52)) )
+        {// Also consider other ends of array if need to for special circle where origX is close to 359
+            return true;
+        }
+    }
+
+    return false;
+}
+
+function revealSphereV2(canvasXcenter, canvasYcenter, canvasRadius)
+{
+    for (var i=0; i<colorsIndexes.length; i++)
+    {
+        for (var j=0; j<colorsIndexes[i].length; j++)
+        {
+            if (pointInViewV2(i, j, canvasXcenter, canvasYcenter, canvasRadius))
+            {
+                for (var k=0; k<4; k++)
+                {
+                    var indexInColor =  colorsIndexes[i][j][k];
+                    var only1Tri = false;
+
+                    if (i == 0 || i == colorsIndexes.length-1)
+                    {
+                        indexInColor = colorsIndexes[i][j];
+                        only1Tri = true;
+                    }
+
+                    if (colors[indexInColor][0] == notFoundSea[0] && colors[indexInColor][1] == notFoundSea[1] && colors[indexInColor][2] == notFoundSea[2])
+                    { // Is notFoundSea, needs changing to foundSea
+                        totalIndexesFound += (1/4);
+
+                        makeTriColor(colors, foundSea[0], foundSea[1], foundSea[2], indexInColor);
+
+                        gl.bufferSubData(gl.ARRAY_BUFFER, (4 * 4 * positions.length)+(4 * 4 * (indexInColor)), foundSeaArr);
+                    }
+                    else if (colors[indexInColor][0] == notFoundLand[0] && colors[indexInColor][1] == notFoundLand[1] && colors[indexInColor][2] == notFoundLand[2])
+                    { // Is notFoundLand, needs changing to foundLand
+                        totalIndexesFound += (1/4);
+
+                        var height = ((heights[i][j]-theEntireAvg*1.15)/1.5);
+                        if (heights[i][j] > theEntireAvg*1.3)// && (i > 29 && i < 148))
+                            height = ((heights[i][j]-theEntireAvg*1.15)/1.2);
+                        if (heights[i][j] > theEntireAvg*1.45)// && (i > 29 && i < 148))
+                            height = ((heights[i][j]-theEntireAvg*1.15)/1.05);
+
+                        if (height > 1-foundLand[1])
+                            height = 1-foundLand[1];
+
+                        var foundLandArr = new Float32Array([foundLand[0], foundLand[1]+height, foundLand[2], foundLand[3], foundLand[0], foundLand[1]+height, foundLand[2], foundLand[3], foundLand[0], foundLand[1]+height, foundLand[2], foundLand[3]]);
+
+                        makeTriColor(colors, foundLand[0], foundLand[1]+height, foundLand[2], indexInColor);
+
+                        gl.bufferSubData(gl.ARRAY_BUFFER, (4 * 4 * positions.length)+(4 * 4 * (indexInColor)), foundLandArr);
+                    }
+                    else if (colors[indexInColor][0] == notfoundIce[0] && colors[indexInColor][1] == notfoundIce[1] && colors[indexInColor][2] == notfoundIce[2])
+                    { // Is notFoundLand, needs changing to foundLand
+                        if (!only1Tri)
+                            totalIndexesFound += (1/4);
+                        else
+                            totalIndexesFound++;
+
+                        makeTriColor(colors, foundIce[0], foundIce[1], foundIce[2], indexInColor);
+
+                        gl.bufferSubData(gl.ARRAY_BUFFER, (4 * 4 * positions.length)+(4 * 4 * (indexInColor)), foundIceArr);
+                    }
+                }
+
+                var spotToReveal = -1;
+
+                for (var k=0; k<spots.length; k++)
+                {
+                    for (var l=0; l<spots[k].length; l++)
+                    {
+                        if (spots[k][l][0] == i && spots[k][l][1] == j)
+                        {
+                            spotToReveal = k;
+                        }
+                    }
+                }
+
+                if (spotToReveal > -1 && !foundSpotBools[spotToReveal])
+                {
+                    foundSpotBools[spotToReveal] = true;
+
+                    for (var l=0; l<spots[spotToReveal].length; l++)
+                    {
+                        totalIndexesFound++;
+                        //console.log("Revealing spot "+spotToReveal+" w/ coords = "+spots[spotToReveal][l][0]+", "+spots[spotToReveal][l][0]);
+                        makeTriColor(colors, foundSpot[0], foundSpot[1], foundSpot[2], colorsIndexes[spots[spotToReveal][l][0]][spots[spotToReveal][l][1]][0]);
+                        makeTriColor(colors, foundSpot[0], foundSpot[1], foundSpot[2], colorsIndexes[spots[spotToReveal][l][0]][spots[spotToReveal][l][1]][1]);
+                        makeTriColor(colors, foundSpot[0], foundSpot[1], foundSpot[2], colorsIndexes[spots[spotToReveal][l][0]][spots[spotToReveal][l][1]][2]);
+                        makeTriColor(colors, foundSpot[0], foundSpot[1], foundSpot[2], colorsIndexes[spots[spotToReveal][l][0]][spots[spotToReveal][l][1]][3]);
+
+                        gl.bufferSubData(gl.ARRAY_BUFFER, (4 * 4 * positions.length)+(4 * 4 * (colorsIndexes[spots[spotToReveal][l][0]][spots[spotToReveal][l][1]][0])), foundSpotArr);
+                        gl.bufferSubData(gl.ARRAY_BUFFER, (4 * 4 * positions.length)+(4 * 4 * (colorsIndexes[spots[spotToReveal][l][0]][spots[spotToReveal][l][1]][1])), foundSpotArr);
+                        gl.bufferSubData(gl.ARRAY_BUFFER, (4 * 4 * positions.length)+(4 * 4 * (colorsIndexes[spots[spotToReveal][l][0]][spots[spotToReveal][l][1]][2])), foundSpotArr);
+                        gl.bufferSubData(gl.ARRAY_BUFFER, (4 * 4 * positions.length)+(4 * 4 * (colorsIndexes[spots[spotToReveal][l][0]][spots[spotToReveal][l][1]][3])), foundSpotArr);
+                    }
+                }
+            }
+        }
+    }
 }
 
 function initHeightsArray(arr, xL, yL, cR, nLat, nLong)
@@ -1219,13 +1361,15 @@ function makePositionsAndColors(radius)
     // This one is for testing
     //revealSphere(88, 70, "init");
 
-    //positions.push([0, 0, 1.3, 1]);
+    positions.push([0, 0, 1.3, 1]);
+    positions.push([0, 0, 1.3, 1]);
+    positions.push([0, 0, 1.3, 1]);
     //positions.push([-0.05, -0.1, 1.3, 1]);
     //positions.push([0.05, -0.1, 1.3, 1]);
 
-    //colors.push([0, 0, 0, 1]);
-    //colors.push([0, 0, 0, 1]);
-    //colors.push([0, 0, 0, 1]);
+    colors.push([0, 0, 0, 1]);
+    colors.push([0, 0, 0, 1]);
+    colors.push([0, 0, 0, 1]);
 }
 
 function spotCoordsNotNearAnother(coordsSpot, indexI, indexJ)
