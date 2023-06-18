@@ -1,58 +1,154 @@
-<!-- Rename this file to something else -->
-
 <html>
   <head>
     <link rel="stylesheet" href="Styles.css">
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
   </head>
 
+  <!-- If you don't know how WebGL works and its interaction with the Vertex and Fragment Shaders in the GPU, please look it up -->
+  <!-- I will not explain how they work, only my custom edits to the process -->
+
   <!-- Vertex Shader -->
   <script id="vertex-shader" type="x-shader/x-vertex">
     attribute vec4 vPosition;
     attribute vec4 vColor;
+    attribute vec4 vNormal;
+
+    uniform mat4 ctm, model_view, projection;
+
+    // 15 indexes in the array for each light
+    uniform vec4 light_position[15];
+
     varying vec4 color;
 
-    uniform mat4 ctm;
+    varying vec4 N;
+    // 15 indexes in the array for each light
+    varying vec4 L[15];
+    varying vec4 V;
 
     // toRHR (to right-hand rule)
     // DO NOT MODIFY THE toRHR VARIABLE
     mat4 toRHR = mat4(vec4(1,0,0,0),
-		      vec4(0,1,0,0),
-		      vec4(0,0,-1,0),
-		      vec4(0,0,0,1));
+                      vec4(0,1,0,0),
+                      vec4(0,0,-1,0),
+                      vec4(0,0,0,1));
     
     void main()
     {
-	vec4 position = ctm * vPosition;
-	color = vColor;
-	
-	// DO NOT MODIFY THE NEXT LINE
-	gl_Position = toRHR * position;
+      vec4 position = projection * model_view * ctm * vPosition;
+
+      for (int i=0; i<15; i++)
+      {
+        // For each light position
+        if (light_position[i] != vec4(0.0, 0.0, 0.0, 0.0))
+        { 
+          // If its a valid light position, calculate L[i]
+
+          vec4 L_temp = model_view * (light_position[i] - ctm * vPosition);
+          L[i] = L_temp;
+        }
+        else
+        {
+          // Otherwise, input an empty vector
+
+          L[i] = vec4(0.0, 0.0, 0.0, 0.0);
+        }
+        // No matter what, all elements in L are valid
+        // L is then read by the Fragment Shader below to calculate actual color with light applied
+      }
+
+      N = normalize(model_view * ctm * vNormal);
+      vec4 eye_position = vec4(0.0, 0.0, 0.0, 1.0);
+      V = normalize(eye_position - (model_view * ctm * vPosition));
+
+      // Temporary color is taken from colors array in IndexController
+      color = vColor;
+      
+      // DO NOT MODIFY THE NEXT LINE
+      gl_Position = toRHR * position;
     }
   </script>
 
   <!-- Fragment Shader -->
   <script id="fragment-shader" type="x-shader/x-fragment">
     precision mediump float;
-    
+
+    varying vec4 N;
+    // 15 indexes in the array for each light
+    varying vec4 L[15];
+    varying vec4 V;
+
+    float distance;
+
     varying vec4 color;
+
+    uniform vec4 ambient_product, diffuse_product, specular_product;
+    uniform float shininess;
+    // 15 indexes in the array for each light
+    uniform float attenuation_constant[15], attenuation_linear[15], attenuation_quadratic[15];
+
+    vec4 ambient, diffuse, specular;
     
     void main()
     {
-	gl_FragColor = color;
+      vec3 the_color = vec3(0.0);
+
+      vec4 NN = normalize(N);
+      vec4 VV = normalize(V);
+
+      ambient = color * ambient_product;
+
+      for (int i=0; i<15; i++)
+      {
+        // For each light position, calc values and add to vector the_color
+
+        // Read each index in L from the Vertex Shader
+        vec4 LL = normalize(normalize(L[i]));
+        distance = length(L[i]);
+
+        vec4 H = normalize(LL + VV);
+        diffuse = max(dot(LL, NN), 0.0) * color * diffuse_product;
+        specular = pow(max(dot(NN, H), 0.0), shininess) * specular_product;
+        float attenuation = 1.0/(attenuation_constant[i] + (attenuation_linear[i] * distance) + (attenuation_quadratic[i] * distance * distance));
+
+        if (i == 0)
+        {
+          // If the light is the star
+
+          vec4 tempC = ambient + attenuation * (diffuse + specular);
+
+          the_color += vec3(tempC.x, tempC.y, tempC.z);
+        }
+        else if (i >= 3) // Indexes 1 and 2 are meant for the lights for the top and and bottom of the star but as of 5/20/2023 they are not used
+        {
+          // Other lights including the spaceship engines and the spots
+
+          vec4 tempC = attenuation * (diffuse);
+
+          the_color += vec3(tempC.x, tempC.y, tempC.z);
+        }
+        // Only difference between the two is that ambient light is only applied to the star's light
+      }
+
+      gl_FragColor = vec4(the_color.x, the_color.y, the_color.z, 1.0);
     }
   </script>
 
-  <!-- Load user-defined libraries and programs -->
-  <script type="text/javascript" src="common/initShaders.js"></script>
-  <!-- Add more libraries here -->
-  <script type="text/javascript" src="common/myLib.js"></script>
-  <script type="text/javascript" src="common/linearAlg.js"></script>
-  <script type="text/javascript" src="MakeShapeAndColorFunctions.js"></script>
-  <script type="text/javascript" src="TransformationFunctions.js"></script>
+  <!-- Libraries and programs -->
+  <script type="text/javascript" src="Libraries/common/initShaders.js"></script>
+  <script type="text/javascript" src="Libraries/common/myLib.js"></script>
+  <script type="text/javascript" src="Libraries/common/linearAlg.js"></script>
+  <script type="text/javascript" src="Libraries/vertices_and_transformations/TransformationFunctions.js"></script>
+  <script type="text/javascript" src="Libraries/vertices_and_transformations/MakeAllPositionsColorsNormals.js"></script>
+  <script type="text/javascript" src="Libraries/vertices_and_transformations/MakeGenericShapeFunctions.js"></script>
+  <script type="text/javascript" src="Libraries/data_classes/Star.js"></script>
+  <script type="text/javascript" src="Libraries/data_classes/Planet.js"></script>
+  <script type="text/javascript" src="Libraries/data_classes/Spaceship.js"></script>
+  <script type="text/javascript" src="Libraries/data_classes/SolarSystemDetails.js"></script>
+  <script type="text/javascript" src="Tests.js"></script>
+  <script src="https://smtpjs.com/v3/smtp.js"></script>
 
   <!-- The main program -->
-  <script type="text/javascript" src="Website_V2.js"></script>
+  <script type="text/javascript" src="IndexController.js"></script>
 
   <!-- HTML -->
   <head>
@@ -60,196 +156,388 @@
   </head>
   
   <body onload="main();">
-    <div id="nav0" class="sidebar">
-      <a href="javascript:void(0)" class="closebtn" onclick='closeNav("nav0")'>&times;</a>
-      <b>David's Professional Skills</b>
-      <c>Software Development</c>
-      <li id="primary">Java, C++ Applications</li>
-      <c>Web Development</c>
-      <li id="primary">HTML/CSS/JavaScript, Oracle APEX Applications</li>
-      <c>Microsoft Office</c>
-      <li id="primary">Word, PowerPoint, Excel</li>
-      <c>Data Entry</c>
-      <c>Customer Service</c>
-    </div>
-    <div id="nav1" class="sidebar">
-      <a href="javascript:void(0)" class="closebtn" onclick='closeNav("nav1")'>&times;</a>
-      <b>David's Programming Skills</b>
-      <c>Java</c>
-      <li id="primary">Applications, Algorithms</li>
-      <li id="primary">For an example, see my personal projects</li>
-      <c>C</c>
-      <li id="primary">Algorithms</li>
-      <li id="primary">For example, I created a simplified version of a memory allocation and deallocation algorithm (malloc() and free())</li>
-      <c>C++</c>
-      <li id="primary">Applications, Algorithms</li>
-      <li id="primary">For an example, see my personal projects</li>
-      <c>SQL</c>
-      <li id="primary">Oracle queries and database commands</li>
-      <c>Bash/Shell</c>
-      <li id="primary">Linux commands and script creation</li>
-      <c>JavaScript</c>
-      <c>HTML</c>
-      <c>CSS</c>
-      <c>WebGL</c>
-      <c>Dynamic Programming</c>
-      <c>Parallel Programming</c>
-    </div>
-    <div id="nav2" class="sidebar">
-      <a href="javascript:void(0)" class="closebtn" onclick='closeNav("nav2")'>&times;</a>
-      <b>David's Education</b>
-      <c>University of Pittsburgh</c>
-      <li id="primary">Graduation Date: May, 2023</li>
-      <li id="primary">Computer Science Major</li>
-      <li id="primary">Spanish Minor</li>
-      <li id="primary">GPA: 3.55</li>
-      <li id="primary">Dean's List in Spring and Fall 2021</li>
-      <li id="primary">Esports Club, Spanish Club</li>
-      <li id="primary">Classes Taken:</li>
-        <li id="secondary">Calculus 1 & 2</li>
-        <li id="secondary">Physics 1 & 2</li>
-        <li id="secondary">Intro to Operating Systems</li>
-        <li id="secondary">Database Management Systems</li>
-        <li id="secondary">Intro to Computer Graphics</li>
-        <li id="secondary">Software Engineering</li>
-        <li id="secondary">Algorithm Design</li>
-      <c>Science Leadership Academy (High School)</c>
-      <li id="primary">Graduation Date: May, 2019</li>
-      <li id="primary">Project based curiculum, hosting students from all over Philadelphia in Center City</li>
-      <li id="primary">I was part of the Engineering program where I learned CAD, machine tools, 3D printing, and eletrical engineering</li>
-      <li id="primary">Intership-like program with JMT Engineering and Stantec</li>
-        <li id="secondary">Every other Wednesday a group of us would go to their office and collaborate on a group project, which we presented at the end of the school year</li>
-      <li id="primary">School's partnership with The Franklin Institute contributed to project based learning</li>
-      <li id="primary">I took Calculus 1 at the nearby University of Pennsylvania during my senior year</li>
-      <li id="primary">Varsity Ultimate Frisbee</li>
-    </div>
-    <div id="nav3" class="sidebar">
-      <a href="javascript:void(0)" class="closebtn" onclick='closeNav("nav3")'>&times;</a>
-      <b>David's Professional Experience</b>
-      <c>United States Steel: Data Management Intern</c>
-      <li id="primary">January, 2022 - December, 2022</li>
-      <li id="primary">I created an Oracle APEX application to collect database object ownership by USS application to better establish least privilege</li>
-      <li id="primary">Oracle APEX, or "Application Express", is a low-code software used to rapidly develop web applications populated with data stored in one or more databases</li>
-      <li id="primary">This application, covering three database systems, 1750 databases, and more than 4.5 million database objects, involved multiple pages, custom JavaScript, complex SQL queries, and sufficient database objects for back-end data storage and processing</li>
-      <li id="primary">The project included creating and maintaining documentation which allows my team to manage the application in my absence</li>
-      <li id="primary">I also edited and created bash scripts to improve the automation of my team's database processes, including but not limited to upgrades and backups of databases</li>
-      <c>Target: Fulfillment Expert</c>
-      <li id="primary">December, 2020 - October, 2021</v>
-      <li id="primary">I worked at two separate locations, one in Philadelphia and one in Pittsburgh</li>
-      <li id="primary">I picked items for guest orders accurately and quickly so that all service and ship time standards were met</li>
-      <li id="primary">I ensured that the sales floor was well stocked and accurately signed</li>
-      <li id="primary">I answered guests' questions and directed each individual to the proper location in the store according to their needs</li>
-      <c>Howard-McCray: Intern</c>
-      <li id="primary">June, 2018 - August, 2018</li>
-      <li id="primary">I organized spare parts while maintaining the location of each with a custom CAD layout</li>
-      <li id="primary">I kept track of all known parts and their quantities, whether in or out of stock, in an Excel Spreadsheet</li>
-    </div>
-    <div id="nav4" class="sidebar">
-      <a href="javascript:void(0)" class="closebtn" onclick='closeNav("nav4")'>&times;</a>
-      <b>David's Spoken Languages</b>
-      <c>English (First Language)</c>
-      <c>Spanish (High Proficiency)</c>
-      <li id="primary">I have taken 3.5 years of college level Spanish and 3 years of high school level Spanish before that</li>
-      <li id="primary">I am also a part of the Spanish Club</li>
-    </div>
-    <div id="nav5" class="sidebar">
-      <a href="javascript:void(0)" class="closebtn" onclick='closeNav("nav5")'>&times;</a>
-      <b>David's Personal Projects</b>
-      <c>Store Layout App</c>
-      <iframe style="padding-left: 48px" width="500" height="281" src="https://www.youtube.com/embed/js1BarHDsrw" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
-      <a href = "javascript:void(0);" onfocus="" onclick="window.open('https://github.com/robertsd1072/StoreLayoutApp', '_blank');" style="font-size:16px; padding: 8px 8px 8px 48px;">Github Repository <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-link-45deg" viewBox="0 0 16 16">
-        <path d="M4.715 6.542 3.343 7.914a3 3 0 1 0 4.243 4.243l1.828-1.829A3 3 0 0 0 8.586 5.5L8 6.086a1.002 1.002 0 0 0-.154.199 2 2 0 0 1 .861 3.337L6.88 11.45a2 2 0 1 1-2.83-2.83l.793-.792a4.018 4.018 0 0 1-.128-1.287z"/>
-        <path d="M6.586 4.672A3 3 0 0 0 7.414 9.5l.775-.776a2 2 0 0 1-.896-3.346L9.12 3.55a2 2 0 1 1 2.83 2.83l-.793.792c.112.42.155.855.128 1.287l1.372-1.372a3 3 0 1 0-4.243-4.243L6.586 4.672z"/>
-      </svg></a>
-      <c>Ultimate Tic-Tac-Toe</c>
-      <iframe style="padding-left: 48px" width="500" height="281" src="https://www.youtube.com/embed/0wLGVzoAl8s" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
-      <a href = "javascript:void(0);" onfocus="" onclick="window.open('https://github.com/robertsd1072/Unreal4_UltimateTicTacToe', '_blank');" style="font-size:16px; padding: 8px 8px 8px 48px;">Github Repository <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-link-45deg" viewBox="0 0 16 16">
-        <path d="M4.715 6.542 3.343 7.914a3 3 0 1 0 4.243 4.243l1.828-1.829A3 3 0 0 0 8.586 5.5L8 6.086a1.002 1.002 0 0 0-.154.199 2 2 0 0 1 .861 3.337L6.88 11.45a2 2 0 1 1-2.83-2.83l.793-.792a4.018 4.018 0 0 1-.128-1.287z"/>
-        <path d="M6.586 4.672A3 3 0 0 0 7.414 9.5l.775-.776a2 2 0 0 1-.896-3.346L9.12 3.55a2 2 0 1 1 2.83 2.83l-.793.792c.112.42.155.855.128 1.287l1.372-1.372a3 3 0 1 0-4.243-4.243L6.586 4.672z"/>
-      </svg></a>
-      <c>Also, this Website</c>
-      <li id="primary">Made with a custom array of vertices to build a sphere, custom transformation functions, and custom animations, all using WebGL</li>
-    </div>
-    <div id="main">
-      <div id="topInfo" class="grid-container-element">
-        <div id="welcome" class="grid-child-element-info">
-          <h1>Discover David Roberts</h1>
-          <p>
-            <!-- Does envelope -->
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-envelope-fill" viewBox="0 0 16 16">
-              <path d="M.05 3.555A2 2 0 0 1 2 2h12a2 2 0 0 1 1.95 1.555L8 8.414.05 3.555ZM0 4.697v7.104l5.803-3.558L0 4.697ZM6.761 8.83l-6.57 4.027A2 2 0 0 0 2 14h12a2 2 0 0 0 1.808-1.144l-6.57-4.027L8 9.586l-1.239-.757Zm3.436-.586L16 11.801V4.697l-5.803 3.546Z"/>
-            </svg>
-            robertsd1072@gmail.com&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-            <!-- Does phone -->
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-telephone-fill" viewBox="0 0 16 16">
-              <path fill-rule="evenodd" d="M1.885.511a1.745 1.745 0 0 1 2.61.163L6.29 2.98c.329.423.445.974.315 1.494l-.547 2.19a.678.678 0 0 0 .178.643l2.457 2.457a.678.678 0 0 0 .644.178l2.189-.547a1.745 1.745 0 0 1 1.494.315l2.306 1.794c.829.645.905 1.87.163 2.611l-1.034 1.034c-.74.74-1.846 1.065-2.877.702a18.634 18.634 0 0 1-7.01-4.42 18.634 18.634 0 0 1-4.42-7.009c-.362-1.03-.037-2.137.703-2.877L1.885.511z"/>
-            </svg> 
-            +1(215) 275-1295&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-            <!-- Does LinkedIn icon -->
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-linkedin" viewBox="0 0 16 16">
-              <path d="M0 1.146C0 .513.526 0 1.175 0h13.65C15.474 0 16 .513 16 1.146v13.708c0 .633-.526 1.146-1.175 1.146H1.175C.526 16 0 15.487 0 14.854V1.146zm4.943 12.248V6.169H2.542v7.225h2.401zm-1.2-8.212c.837 0 1.358-.554 1.358-1.248-.015-.709-.52-1.248-1.342-1.248-.822 0-1.359.54-1.359 1.248 0 .694.521 1.248 1.327 1.248h.016zm4.908 8.212V9.359c0-.216.016-.432.08-.586.173-.431.568-.878 1.232-.878.869 0 1.216.662 1.216 1.634v3.865h2.401V9.25c0-2.22-1.184-3.252-2.764-3.252-1.274 0-1.845.7-2.165 1.193v.025h-.016a5.54 5.54 0 0 1 .016-.025V6.169h-2.4c.03.678 0 7.225 0 7.225h2.4z"/>
-            </svg>
-            <a href = "javascript:void(0);" onfocus="" onclick="window.open('https://www.linkedin.com/in/david-roberts-pitt', '_blank');">David Roberts</a>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-            <!-- Does Github icon -->
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-github" viewBox="0 0 16 16">
-              <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.012 8.012 0 0 0 16 8c0-4.42-3.58-8-8-8z"/>
-            </svg> 
-            <!-- Does person -->
-            <a href = "javascript:void(0);" onfocus="" onclick="window.open('https://github.com/robertsd1072', '_blank');">robertsd1072</a>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-person-fill" viewBox="0 0 16 16">
-              <path d="M3 14s-1 0-1-1 1-4 6-4 6 3 6 4-1 1-1 1H3zm5-6a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/>
-            </svg>
-            He/Him&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-      <!-- Does pin on map -->
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-pin-map-fill" viewBox="0 0 16 16">
-              <path fill-rule="evenodd" d="M3.1 11.2a.5.5 0 0 1 .4-.2H6a.5.5 0 0 1 0 1H3.75L1.5 15h13l-2.25-3H10a.5.5 0 0 1 0-1h2.5a.5.5 0 0 1 .4.2l3 4a.5.5 0 0 1-.4.8H.5a.5.5 0 0 1-.4-.8l3-4z"/>
-              <path fill-rule="evenodd" d="M4 4a4 4 0 1 1 4.5 3.969V13.5a.5.5 0 0 1-1 0V7.97A4 4 0 0 1 4 3.999z"/>
-            </svg> 
-            Willing to Relocate
-          </p>
-        </div>
-        <div id="progress-bars" class="grid-child-element-bars">
-          Land Discovery Progress
-          <div id="myProgress" style="border-radius: 15px;">
-            <div id="land" style="border-radius: 15px;">0%</div>
-          </div>
-          Points of Interest Discovery Progress
-          <div id="myProgress" style="border-radius: 15px;">
-            <div id="points" style="border-radius: 15px;">0/6</div>
-          </div>
-          Points of Interest Examined Progress
-          <div id="myProgress" style="border-radius: 15px;">
-            <div id="pointsClicked" style="border-radius: 15px;">0/6</div>
-          </div>
-        </div>
-      </div>
-      <div id="canvas_holder" style="background-color: #7fdfff;">
-        <!-- The Modal -->
-        <div id="myModal" style="display: none; height: 0px;">
-            <!-- Modal content -->
-            <div class="modal-content" style="height: 85px; width: 300px; background-color: #000000; border-radius: 15px;">
-            <div id="modtext" style="color: #ffffff;">Some text in the Modal...</div>
-            </div>
-        </div>
-        <div id="refreshModal" style="display: none; height: 0px;">
-            <!-- Modal content -->
-            <div class="modal-content" style="height: 105px; width: 220px; background-color: #000000; border-radius: 15px;">
-            <div id="modtext" style="color: #ffffff;">Refresh the page to see a differently generated world! All progress will reset.</div>
-            </div>
-        </div>
-        <!-- The Modal -->
-        <div id="modalAtBeginning" class="non-modal">
-            <!-- Modal content -->
-            <div class="modal-content" style="height: 270px; width: 700px; text-align: center; border-radius: 30px;">
-              <h2 style="padding-bottom: 2%;">Explore and discover the world, and make sure to check out the points of interest to learn more about me!</h2>
-              <h3 id="website_ready" style="padding-bottom: 2%;">Making sure the site is ready...</h3>
-              <button id="im_ready" type="button" style="background-color: #7fdfff; font-size: 30px; padding: 10px 25px; border-radius: 20px; display: none" onclick='userIsReady()'>I'm Ready!</button>
-            </div>
-        </div>
-        <canvas id="gl-canvas" width="2000" height="2000"  class="main">
-        Sorry;
-        </canvas>
+    
+    <!-- START Modal which is constantly in the bottom left corner with my contact information -->
+    <div id="modal_quick_links" style="display: none">
+      <div class="modal-content" style="height: 220px; width: 250px; text-align: center; border-radius: 30px;">
+        <h2 style="text-align: center;">Quick Links</h2>
+        <!-- Envelope icon -->
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-envelope-fill" viewBox="0 0 16 16">
+          <path d="M.05 3.555A2 2 0 0 1 2 2h12a2 2 0 0 1 1.95 1.555L8 8.414.05 3.555ZM0 4.697v7.104l5.803-3.558L0 4.697ZM6.761 8.83l-6.57 4.027A2 2 0 0 0 2 14h12a2 2 0 0 0 1.808-1.144l-6.57-4.027L8 9.586l-1.239-.757Zm3.436-.586L16 11.801V4.697l-5.803 3.546Z"/>
+        </svg>
+        robertsd1072@gmail.com
+        <br>
+        <!-- Phone icon -->
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-telephone-fill" viewBox="0 0 16 16">
+          <path fill-rule="evenodd" d="M1.885.511a1.745 1.745 0 0 1 2.61.163L6.29 2.98c.329.423.445.974.315 1.494l-.547 2.19a.678.678 0 0 0 .178.643l2.457 2.457a.678.678 0 0 0 .644.178l2.189-.547a1.745 1.745 0 0 1 1.494.315l2.306 1.794c.829.645.905 1.87.163 2.611l-1.034 1.034c-.74.74-1.846 1.065-2.877.702a18.634 18.634 0 0 1-7.01-4.42 18.634 18.634 0 0 1-4.42-7.009c-.362-1.03-.037-2.137.703-2.877L1.885.511z"/>
+        </svg> 
+        +1(215) 275-1295
+        <br>
+        <!-- LinkedIn icon -->
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-linkedin" viewBox="0 0 16 16">
+          <path d="M0 1.146C0 .513.526 0 1.175 0h13.65C15.474 0 16 .513 16 1.146v13.708c0 .633-.526 1.146-1.175 1.146H1.175C.526 16 0 15.487 0 14.854V1.146zm4.943 12.248V6.169H2.542v7.225h2.401zm-1.2-8.212c.837 0 1.358-.554 1.358-1.248-.015-.709-.52-1.248-1.342-1.248-.822 0-1.359.54-1.359 1.248 0 .694.521 1.248 1.327 1.248h.016zm4.908 8.212V9.359c0-.216.016-.432.08-.586.173-.431.568-.878 1.232-.878.869 0 1.216.662 1.216 1.634v3.865h2.401V9.25c0-2.22-1.184-3.252-2.764-3.252-1.274 0-1.845.7-2.165 1.193v.025h-.016a5.54 5.54 0 0 1 .016-.025V6.169h-2.4c.03.678 0 7.225 0 7.225h2.4z"/>
+        </svg>
+        <a href = "javascript:void(0);" onfocus="" onclick="window.open('https://www.linkedin.com/in/david-roberts-pitt', '_blank');">david-roberts-pitt</a>
+        <br>
+        <!-- Github icon -->
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-github" viewBox="0 0 16 16">
+          <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.012 8.012 0 0 0 16 8c0-4.42-3.58-8-8-8z"/>
+        </svg>
+        <a href = "javascript:void(0);" onfocus="" onclick="window.open('https://github.com/robertsd1072', '_blank');">robertsd1072</a>
+        <br>
+        <!-- Leetcode icon -->
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24">
+          <path fill="currentColor" d="M13.483 0a1.374 1.374 0 0 0-.961.438L7.116 6.226l-3.854 4.126a5.266 5.266 0 0 0-1.209 2.104a5.35 5.35 0 0 0-.125.513a5.527 5.527 0 0 0 .062 2.362a5.83 5.83 0 0 0 .349 1.017a5.938 5.938 0 0 0 1.271 1.818l4.277 4.193l.039.038c2.248 2.165 5.852 2.133 8.063-.074l2.396-2.392c.54-.54.54-1.414.003-1.955a1.378 1.378 0 0 0-1.951-.003l-2.396 2.392a3.021 3.021 0 0 1-4.205.038l-.02-.019l-4.276-4.193c-.652-.64-.972-1.469-.948-2.263a2.68 2.68 0 0 1 .066-.523a2.545 2.545 0 0 1 .619-1.164L9.13 8.114c1.058-1.134 3.204-1.27 4.43-.278l3.501 2.831c.593.48 1.461.387 1.94-.207a1.384 1.384 0 0 0-.207-1.943l-3.5-2.831c-.8-.647-1.766-1.045-2.774-1.202l2.015-2.158A1.384 1.384 0 0 0 13.483 0zm-2.866 12.815a1.38 1.38 0 0 0-1.38 1.382a1.38 1.38 0 0 0 1.38 1.382H20.79a1.38 1.38 0 0 0 1.38-1.382a1.38 1.38 0 0 0-1.38-1.382z"/>
+        </svg>
+        <a href = "javascript:void(0);" onfocus="" onclick="window.open('https://leetcode.com/d_robber/', '_blank');">d_robber</a>
       </div>
     </div>
+    <!-- END Modal which is constantly in the bottom left corner with my contact information -->
+
+    <!-- START Modal in the bottom right corner in Solar System view with info about controls -->
+    <div id="modal_controls_solar_system_view" style="display: none">
+      <div class="modal-content" style="height: 250px; width: 250px; text-align: center; border-radius: 30px;">
+        <h2 style="text-align: center;">Controls</h2>
+        <div style="padding-bottom: 7px;">Move the mouse left and right to change the direction of the spaceship</div>
+        <div style="padding-bottom: 7px;">Move the mouse to the left and right edges of the screen to rapidly change the direction</div>
+      </div>
+    </div>
+    <!-- END Modal in the bottom right corner in Solar System view with info about controls -->
+
+    <!-- START Modal in the bottom right corner in Planet view with info about controls -->
+    <div id="modal_controls_planet_view" style="display: none">
+      <div class="modal-content" style="height: 300px; width: 250px; text-align: center; border-radius: 30px;">
+        <h2 style="text-align: center;">Controls</h2>
+        <div style="padding-bottom: 7px;">Move the move around the spaceship to change its direction</div>
+        <div style="padding-bottom: 7px;">Find the points of interest for information about me</div>
+        <div style="padding-bottom: 10px;">Use the slider below to change the intensity of the light generated by the spaceship</div>
+        <div class="slidecontainer">
+          <input type="range" min="1" max="200" value="100" class="slider" id="spaceship_light_slider">
+        </div>
+      </div>
+    </div>
+    <!-- END Modal in the bottom right corner in Planet view with info about controls -->
+
+    <!-- START Modal in the top right corner in Planet view with the progress bars -->
+    <div id="landProgressModal" style="display: none; height: 0px;">
+      <div class="modal-content" id="landProgressModalWidth" style="height: 335px; width: 300px; background-color: #ffffff; border-radius: 15px;">
+        <h3 id="progressBarsTitleText" style="text-align: center;">Discover David's...</h3><!-- This text is changed in IndexController.js -->
+        <div id="landProgressText" style="color: #000000; padding-bottom: 10px; text-align: center;">Land Discovery Progress</div>
+        <div id="progress_empty" style="border-radius: 15px;">
+          <div id="land" style="border-radius: 15px;">0%</div>
+        </div>
+        <div id="landProgressText" style="color: #000000; padding-top: 10px; padding-bottom: 10px; text-align: center;">Points of Interest Discovery Progress</div>
+        <div id="progress_empty" style="border-radius: 15px;">
+          <div id="points" style="border-radius: 15px;">0%</div>
+        </div>
+        <div id="landProgressText" style="color: #000000; padding-top: 10px; padding-bottom: 10px; text-align: center;">Points of Interest Examined Progress</div>
+        <div id="progress_empty" style="border-radius: 15px;">
+          <div id="pointsExamined" style="border-radius: 15px; color: #ffffff;">0%</div>
+        </div>
+      </div>
+    </div>
+    <!-- END Modal in the top left corner in Planet view with the progress bars -->
+
+    <!-- START Modal in the top right corner in Solar System view with info about planet and how to land and exit orbit -->
+    <div id="infoModal" style="display: none; height: 0px;">
+      <div class="modal-content" id="infoModalHeight" style="height: 200px; width: 300px; background-color: #ffffff; border-radius: 15px;">
+        <div style="color: #000000;">
+          <h2 id="infoModalTextTitle" style="text-align: center; color: #000000;">To be changed</h2><!-- This text is changed in IndexController.js -->
+          <div id="infoModalText1" style="color: #000000;">To be changed</div><!-- This text is changed in IndexController.js -->
+          <div id="infoModalText2" style="color: #000000;">To be changed</div><!-- This text is changed in IndexController.js -->
+        </div>
+      </div>
+    </div>
+    <!-- END Modal in the top right corner in Solar System view with info about planet and how to land and exit orbit -->
+
+    <!-- START Modal seen on page load: 1. Prevents user from inputting anything before fully loaded 2. Gives a little info about the page before starting -->
+    <div id="modalAtBeginning" class="non-modal">
+      <div class="modal-content" style="height: 270px; width: 700px; text-align: center; border-radius: 30px;">
+        <h2 id="modalAtBeginningText" style="padding-bottom: 2%;">Explore the solar system, explore each planet, and make sure to check out the points of interest to learn more about David Roberts!</h2>
+        <h3 id="website_status_text" style="padding-bottom: 2%;">Creating the solar system...</h3>
+        <button id="im_ready" class="button" type="button" style="font-size: 30px; padding: 10px 25px; border-radius: 20px; display: none" onclick='userIsReady()'>I'm Ready!</button>
+      </div>
+    </div>
+    <!-- END Modal seen on page load -->
+
+    <!-- START Modal seen when get too close to the star -->
+    <div id="modal_died_cuz_star" class="non-modal" style="display: none">
+      <div class="modal-content" style="height: 180px; width: 500px; text-align: center; border-radius: 30px;">
+        <h3 id="modal_died_cuz_star_text" style="padding-bottom: 2%;">You got too close to the star!</h3>
+        <button id="im_ready" class="button" type="button" style="font-size: 30px; padding: 10px 25px; border-radius: 20px;" onclick='restartAfterDied()'>Restart</button>
+      </div>
+    </div>
+    <!-- END Modal seen when get too close to the star -->
+
+    <!-- START Modals that popup with info about me in Planet view: id in form "[Index of planet]_[Index of spot]" for constant time picking which modal to show -->
+    <div id="planet_view_info_about_me" style="display: none; height: 0px;">
+      <div class="modal-content" id="planet_view_info_about_me_height" style="height: 200px; width: 325px; background-color: #000000; border-radius: 15px;">
+
+        <!-- Modals for the professional skills planet -->
+        <div id="0_0" style="color: #ffffff; padding-left: 0px;">
+          <h3>Software Development</h3>
+          <ul>
+            <li>Java applications</li>
+            <li>C++ applications</li>
+          </ul>
+        </div>
+        <!---->
+        <div id="0_1" style="color: #ffffff; padding-left: 0px;">
+          <h3>Web Development</h3>
+          <ul>
+            <li>HTML/CSS/JavaScript/JSON applications</li>
+            <li>WebGL applications</li>
+            <li>Oracle APEX applications</li>
+          </ul>
+        </div>
+        <!---->
+        <div id="0_2" style="color: #ffffff; padding-left: 0px;">
+          <h3>Data Management</h3>
+          <ul>
+            <li>Oracle</li>
+          </ul>
+        </div>
+        <!---->
+        <div id="0_3" style="color: #ffffff; padding-left: 0px;">
+          <h3>Algorithm Design</h3>
+          <ul>
+            <li>Dynamic programming</li>
+            <li>Parallel programming</li>
+          </ul>
+        </div>
+        <!---->
+        <div id="0_4" style="color: #ffffff; padding-left: 0px;">
+          <h3>Microsoft Office</h3>
+          <ul>
+            <li>Word</li>
+            <li>PowerPoint</li>
+            <li>Excel</li>
+          </ul>
+        </div>
+        <!---->
+        <div id="0_5" style="color: #ffffff; padding-left: 0px;">
+          <h3>Customer Service</h3>
+        </div>
+
+        <!-- Modals for the programming skills planet -->
+        <div id="1_0" style="color: #ffffff; padding-left: 0px;">
+          <h3>Java</h3>
+          <ul>
+            <li>Applications & Algorithms</li>
+            <li>For an example, see my personal projects</li>
+          </ul>
+        </div>
+        <!---->
+        <div id="1_1" style="color: #ffffff; padding-left: 0px;">
+          <h3>C</h3>
+          <ul>
+            <li>Algorithms</li>
+            <li>For an example, I created a simplified version of a memory allocation and deallocation algorithm (malloc() and free())</li>
+          </ul>
+        </div>
+        <!---->
+        <div id="1_2" style="color: #ffffff; padding-left: 0px;">
+          <h3>C++</h3>
+          <ul>
+            <li>Applications & Algorithms</li>
+            <li>For an example, see my personal projects</li>
+          </ul>
+        </div>
+        <!---->
+        <div id="1_3" style="color: #ffffff; padding-left: 0px;">
+          <h3>Python</h3>
+          <ul>
+            <li>Algorithms</li>
+            <li>For an example, I created a informed search algorithm which found the best path in a graph</li>
+          </ul>
+        </div>
+        <!---->
+        <div id="1_4" style="color: #ffffff; padding-left: 0px;">
+          <h3>SQL</h3>
+          <ul>
+            <li>Oracle queries</li>
+            <li>Database commands</li>
+          </ul>
+        </div>
+        <!---->
+        <div id="1_5" style="color: #ffffff; padding-left: 0px;">
+          <h3>Bash/Shell</h3>
+          <ul>
+            <li>Linux commands</li>
+            <li>Script creation</li>
+          </ul>
+        </div>
+        <!---->
+        <div id="1_6" style="color: #ffffff; padding-left: 0px;">
+          <h3>HTML/CSS/JavaScript/JSON</h3>
+        </div>
+        <!---->
+        <div id="1_7" style="color: #ffffff; padding-left: 0px;">
+          <h3>WebGL</h3>
+        </div>
+        <!---->
+        <div id="1_8" style="color: #ffffff; padding-left: 0px;">
+          <h3>Dynamic Programming</h3>
+        </div>
+        <!---->
+        <div id="1_9" style="color: #ffffff; padding-left: 0px;">
+          <h3>Parallel Programming</h3>
+        </div>
+
+        <!-- Modals for the US Steel planet -->
+        <div id="2_0" style="color: #ffffff; padding-left: 0px;">
+          <ul>
+            <li>I was a part of United States Steel (USS) from January, 2022 to December, 2022</li>
+            <li>I worked 100% remotely</li>
+          </ul>
+        </div>
+        <!---->
+        <div id="2_1" style="color: #ffffff; padding-left: 0px;">
+          <div>I created an Oracle APEX application to collect database object ownership by USS application to better establish least privilege</div>
+        </div>
+        <!---->
+        <div id="2_2" style="color: #ffffff; padding-left: 0px;">
+          <div>Oracle APEX, or "Application Express", is a low-code software used to rapidly develop web applications populated with data stored in one or more databases</div>
+        </div>
+        <!---->
+        <div id="2_3" style="color: #ffffff; padding-left: 0px;">
+          <div>This application, covering three database systems, 1750 databases, and more than 4.5 million database objects, involved multiple pages, custom JavaScript, complex SQL queries, and sufficient database objects for back-end data storage and processing</div>
+        </div>
+        <!---->
+        <div id="2_4" style="color: #ffffff; padding-left: 0px;">
+          <div>The project included creating and maintaining documentation which allows my team to manage the application in my absence</div>
+        </div>
+        <!---->
+        <div id="2_5" style="color: #ffffff; padding-left: 0px;">
+          <div>I also edited and created bash scripts to improve the automation of my team's database processes, including but not limited to upgrades and backups of databases</div>
+        </div>
+
+        <!-- Modals for the Arconic planet -->
+        <div id="3_0" style="color: #ffffff; padding-left: 0px;">
+          <div>I started at Arconic on May 22nd, 2023 where I work in person in Lancaster, PA, in the United States.</div>
+        </div>
+        <!---->
+        <div id="3_1" style="color: #ffffff; padding-left: 0px;">
+          <div>Arconic uses Oracle enterprise applications to track:</div>
+          <ul>
+            <li>Maintenance on and problems with assets used in the production of aluminum</li>
+            <li>Specific tasks and jobs employees accomplish and how much time was spent</li>
+            <div>These Oracle apps are then used to do a variety of reporting on different statistics</div>
+          </ul>
+        </div>
+        <!---->
+        <div id="3_2" style="color: #ffffff; padding-left: 0px;">
+          <div>My job is to be an administrator of this system which involves:</div>
+          <ul>
+            <li>Creating and ensuring adherenece to best use practices</li>
+            <li>Managing new user access and removing access for old accounts</li>
+            <li>Merging data from separate applications into one</li>
+            <li>Reporting on various data</li>
+          </ul>
+        </div>
+        <!---->
+        <div id="3_3" style="color: #ffffff; padding-left: 0px;">
+          <div>I work in the Process Control Systems department but I collaborate with those across the entire plant who use these Oracle applications in:</div>
+          <ul>
+            <li>Removing unnecessary and annoying tasks</li>
+            <li>Improving usability which may require training the users</li>
+            <li>Reporting data which will help production in identifying snags in workflow and in preventing equipment failure</li>
+          </ul>
+        </div>
+
+        <!-- Modals for the Pitt planet -->
+        <div id="4_0" style="color: #ffffff; padding-left: 0px;">
+          <h3>Quick Facts</h3>
+          <ul>
+            <li>Graduated: April 2023</li>
+            <li>Major: Computer Science</li>
+            <li>Minor: Spanish</li>
+            <li>GPA: 3.5</li>
+            <li>Dean's List: Spring 2021, Fall 2021, Fall 2022, Spring 2023</li>
+          </ul>
+        </div>
+        <!---->
+        <div id="4_1" style="color: #ffffff; padding-left: 0px;">
+          <h3>Full Transcript</h3>
+          <ul>
+            <li><a href = "javascript:void(0);" onfocus="" onclick="window.open('Libraries/other_files/PITT_TSRPT.pdf', '_blank');" style="font-size:16px;">View my full transcript here
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-link-45deg" viewBox="0 0 16 16">
+                                              <path d="M4.715 6.542 3.343 7.914a3 3 0 1 0 4.243 4.243l1.828-1.829A3 3 0 0 0 8.586 5.5L8 6.086a1.002 1.002 0 0 0-.154.199 2 2 0 0 1 .861 3.337L6.88 11.45a2 2 0 1 1-2.83-2.83l.793-.792a4.018 4.018 0 0 1-.128-1.287z"/>
+                                              <path d="M6.586 4.672A3 3 0 0 0 7.414 9.5l.775-.776a2 2 0 0 1-.896-3.346L9.12 3.55a2 2 0 1 1 2.83 2.83l-.793.792c.112.42.155.855.128 1.287l1.372-1.372a3 3 0 1 0-4.243-4.243L6.586 4.672z"/>
+                                            </svg></a></li>
+          </ul>
+        </div>
+
+        <!-- Modals for the languages planet -->
+        <div id="5_0" style="color: #ffffff; padding-left: 0px;">
+          <h3>English (first language)</h3>
+        </div>
+        <!---->
+        <div id="5_1" style="color: #ffffff; padding-left: 0px;">
+          <h3>Spanish (high proficiency)</h3>
+          <ul>
+            <li>I have taken 4 years of college level Spanish courses and 3 years of high school level Spanish courses before that</li>
+            <li>I was also a part of the Spanish Club at Pitt</li>
+          </ul>
+        </div>
+
+        <!-- Modals for the personal projects planet -->
+        <div id="6_0" style="color: #ffffff; padding-left: 0px;">
+          <h3>Store Layout App</h3>
+          <ul>
+            <li><iframe width="325" height="182" src="https://www.youtube.com/embed/js1BarHDsrw" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></li>
+            <li><a href = "javascript:void(0);" onfocus="" onclick="window.open('https://github.com/robertsd1072/StoreLayoutApp', '_blank');" style="font-size:16px;">Github Repository 
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-link-45deg" viewBox="0 0 16 16">
+              <path d="M4.715 6.542 3.343 7.914a3 3 0 1 0 4.243 4.243l1.828-1.829A3 3 0 0 0 8.586 5.5L8 6.086a1.002 1.002 0 0 0-.154.199 2 2 0 0 1 .861 3.337L6.88 11.45a2 2 0 1 1-2.83-2.83l.793-.792a4.018 4.018 0 0 1-.128-1.287z"/>
+              <path d="M6.586 4.672A3 3 0 0 0 7.414 9.5l.775-.776a2 2 0 0 1-.896-3.346L9.12 3.55a2 2 0 1 1 2.83 2.83l-.793.792c.112.42.155.855.128 1.287l1.372-1.372a3 3 0 1 0-4.243-4.243L6.586 4.672z"/>
+            </svg></a></li>
+          </ul>
+        </div>
+        <!---->
+        <div id="6_1" style="color: #ffffff; padding-left: 0px;">
+          <h3>Ultimate Tic-Tac-Toe</h3>
+          <ul>
+            <li><iframe width="325" height="182" src="https://www.youtube.com/embed/0wLGVzoAl8s" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></li>
+            <li><a href = "javascript:void(0);" onfocus="" onclick="window.open('https://github.com/robertsd1072/Unreal4_UltimateTicTacToe', '_blank');" style="font-size:16px;">Github Repository 
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-link-45deg" viewBox="0 0 16 16">
+              <path d="M4.715 6.542 3.343 7.914a3 3 0 1 0 4.243 4.243l1.828-1.829A3 3 0 0 0 8.586 5.5L8 6.086a1.002 1.002 0 0 0-.154.199 2 2 0 0 1 .861 3.337L6.88 11.45a2 2 0 1 1-2.83-2.83l.793-.792a4.018 4.018 0 0 1-.128-1.287z"/>
+              <path d="M6.586 4.672A3 3 0 0 0 7.414 9.5l.775-.776a2 2 0 0 1-.896-3.346L9.12 3.55a2 2 0 1 1 2.83 2.83l-.793.792c.112.42.155.855.128 1.287l1.372-1.372a3 3 0 1 0-4.243-4.243L6.586 4.672z"/>
+            </svg></a></li>
+          </ul>
+        </div>
+        <!---->
+        <div id="6_2" style="color: #ffffff; padding-left: 0px;">
+          <h3>This Website</h3>
+          <ul>
+            <li>Made with a custom array of vertices to build planets, spaceship, and cities, custom transformation functions, and custom animations, all using WebGL</li>
+            <li>Developed reusing as much code as possible</li>
+            <li>Used the Model View Controller design pattern</li>
+            <li>Used unit tests to test all functions which edited an object's current transformation matrix</li>
+            <li><a href = "javascript:void(0);" onfocus="" onclick="window.open('https://github.com/robertsd1072/robertsd1072.github.io', '_blank');" style="font-size:16px;">Github Repository 
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-link-45deg" viewBox="0 0 16 16">
+              <path d="M4.715 6.542 3.343 7.914a3 3 0 1 0 4.243 4.243l1.828-1.829A3 3 0 0 0 8.586 5.5L8 6.086a1.002 1.002 0 0 0-.154.199 2 2 0 0 1 .861 3.337L6.88 11.45a2 2 0 1 1-2.83-2.83l.793-.792a4.018 4.018 0 0 1-.128-1.287z"/>
+              <path d="M6.586 4.672A3 3 0 0 0 7.414 9.5l.775-.776a2 2 0 0 1-.896-3.346L9.12 3.55a2 2 0 1 1 2.83 2.83l-.793.792c.112.42.155.855.128 1.287l1.372-1.372a3 3 0 1 0-4.243-4.243L6.586 4.672z"/>
+            </svg></a></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- START Sliders used for debugging, not shown -->
+    <div class="slidecontainer" style="display:none">
+      <input type="range" min="1" max="100" value="50" class="slider" id="myRange1">
+    </div>
+    <div class="slidecontainer" style="display:none">
+      <input type="range" min="1" max="100" value="50" class="slider" id="myRange2">
+    </div>
+    <div class="slidecontainer" style="display:none">
+      <input type="range" min="1" max="100" value="50" class="slider" id="myRange3">
+    </div>
+    <!-- END Sliders used for debugging, not shown -->
+
+    <canvas id="gl-canvas" class="main">
+    Hmm;
+    </canvas>
   </body>
 </html>
