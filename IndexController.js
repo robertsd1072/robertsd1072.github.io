@@ -1764,12 +1764,12 @@ function keyDownCallback(event)
 		}
 	}
 
-	if (event.keyCode == 187 && event.ctrlKey)
+	if (event.keyCode == 38)
 	{
 		amount_physically_move_spaceship.z += 0.005;
 	}
 
-	if (event.keyCode == 189 && event.ctrlKey)
+	if (event.keyCode == 40)
 	{
 		amount_physically_move_spaceship.z -= 0.005;
 	}
