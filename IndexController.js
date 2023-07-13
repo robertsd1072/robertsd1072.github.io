@@ -1766,12 +1766,14 @@ function keyDownCallback(event)
 
 	if (event.keyCode == 38)
 	{
-		amount_physically_move_spaceship.z += 0.005;
+		amount_physically_move_spaceship.z += 0.1;
+		alert("Pressed up "+amount_physically_move_spaceship.z);
 	}
 
 	if (event.keyCode == 40)
 	{
-		amount_physically_move_spaceship.z -= 0.005;
+		amount_physically_move_spaceship.z -= 0.1;
+		alert("Pressed down "+amount_physically_move_spaceship.z);
 	}
 }
 
