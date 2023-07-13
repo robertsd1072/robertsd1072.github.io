@@ -144,6 +144,8 @@ var planet_view_rotation_speed = 0.2;
 // See animateStarOrbitPlanetView() in Star.js for more details
 var closest_i_start_planet_anim = 0;
 
+var cur_z_speed = 0.02;
+
 
 function initGL(canvas)
 {
@@ -493,7 +495,7 @@ function initSolarSystemView()
 		// START Move spaceship view
 		var circum = Math.PI * (solar_system_details.getPlanet(index_planet_spaceship_is_close_to).getRadius() * 1.5) * 2;
 		
-		var angle_move_for_one_iter = 360/(circum/0.02);
+		var angle_move_for_one_iter = 360/(circum/cur_z_speed);
 
 		amount_rotation_long_deg_of_spaceship_view = (-1) * angle_move_for_one_iter;
 
@@ -972,7 +974,7 @@ function animateOrbitOfSpaceshipOnPlanet()
 		// START Move spaceship view
 		var circum = Math.PI * (solar_system_details.getPlanet(index_planet_spaceship_is_close_to).getRadius() * 1.5) * 2;
 		
-		var angle_move_for_one_iter = 360/(circum/0.02);
+		var angle_move_for_one_iter = 360/(circum/cur_z_speed);
 
 		amount_rotation_long_deg_of_spaceship_view = (-1) * angle_move_for_one_iter;
 
@@ -1772,12 +1774,17 @@ function glMouseMoveCallback(event)
 
 	if (event.which == 1)
 	{
-		amount_physically_move_spaceship.z += 0.005;
+		cur_z_speed += 0.01;
+		amount_physically_move_spaceship.z = cur_z_speed;
 	}
 
 	if (event.which == 3)
 	{
-		amount_physically_move_spaceship.z -= 0.005;
+		if (amount_physically_move_spaceship.z > 0)
+		{
+			cur_z_speed -= 0.01;
+			amount_physically_move_spaceship.z = cur_z_speed;
+		}
 	}
 
 	if (!spaceship_close_to_planet && !animating.spaceship_orbiting_planet && !animating.spaceship_entry_to_orbit && !planet_view && !animating.spaceship_boom.bool)
@@ -1903,7 +1910,7 @@ function userIsReady()
 
 		amount_physically_move_spaceship.x = 0;
 		amount_physically_move_spaceship.y = 0;
-		amount_physically_move_spaceship.z = 0.02;
+		amount_physically_move_spaceship.z = cur_z_speed;
 
 		moveSpaceshipPhysicalLocation();
 	}
@@ -1945,7 +1952,7 @@ function restartAfterDied()
 
 	amount_physically_move_spaceship.x = 0;
 	amount_physically_move_spaceship.y = 0;
-	amount_physically_move_spaceship.z = 0.02;
+	amount_physically_move_spaceship.z = cur_z_speed;
 
 	moveSpaceshipPhysicalLocation();
 }
