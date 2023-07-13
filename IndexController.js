@@ -1763,24 +1763,22 @@ function keyDownCallback(event)
 			animatePlanetView();
 		}
 	}
-
-	if (event.keyCode == 38)
-	{
-		amount_physically_move_spaceship.z += 0.1;
-		alert("Pressed up "+amount_physically_move_spaceship.z);
-	}
-
-	if (event.keyCode == 40)
-	{
-		amount_physically_move_spaceship.z -= 0.1;
-		alert("Pressed down "+amount_physically_move_spaceship.z);
-	}
 }
 
 function glMouseMoveCallback(event)
 {
 	var midX = (canvas.width/2);
 	var midY = (canvas.height/2)-10;
+
+	if (event.which == 1)
+	{
+		amount_physically_move_spaceship.z += 0.005;
+	}
+
+	if (event.which == 3)
+	{
+		amount_physically_move_spaceship.z -= 0.005;
+	}
 
 	if (!spaceship_close_to_planet && !animating.spaceship_orbiting_planet && !animating.spaceship_entry_to_orbit && !planet_view && !animating.spaceship_boom.bool)
 	{
