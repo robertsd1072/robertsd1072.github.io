@@ -1656,7 +1656,7 @@ function showControlsSolarSystemViewModal()
 	document.getElementById("modal_controls_solar_system_view").style.display = "flex";
 	document.getElementById("modal_controls_solar_system_view").style.position = "absolute";
 	document.getElementById("modal_controls_solar_system_view").style.left = (window.innerWidth-260)+"px";
-	document.getElementById("modal_controls_solar_system_view").style.top = (window.innerHeight-365)+"px";
+	document.getElementById("modal_controls_solar_system_view").style.top = (window.innerHeight-400)+"px";
 }
 
 function hideControlsSolarSystemViewModal()
