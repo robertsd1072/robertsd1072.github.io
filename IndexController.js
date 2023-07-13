@@ -1763,6 +1763,16 @@ function keyDownCallback(event)
 			animatePlanetView();
 		}
 	}
+
+	if (event.keyCode == 187 && event.ctrlKey)
+	{
+		amount_physically_move_spaceship.z += 0.005;
+	}
+
+	if (event.keyCode == 189 && event.ctrlKey)
+	{
+		amount_physically_move_spaceship.z -= 0.005;
+	}
 }
 
 function glMouseMoveCallback(event)
