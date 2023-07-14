@@ -1656,7 +1656,7 @@ function showControlsSolarSystemViewModal()
 	document.getElementById("modal_controls_solar_system_view").style.display = "flex";
 	document.getElementById("modal_controls_solar_system_view").style.position = "absolute";
 	document.getElementById("modal_controls_solar_system_view").style.left = (window.innerWidth-260)+"px";
-	document.getElementById("modal_controls_solar_system_view").style.top = (window.innerHeight-400)+"px";
+	document.getElementById("modal_controls_solar_system_view").style.top = (window.innerHeight-380)+"px";
 }
 
 function hideControlsSolarSystemViewModal()
@@ -1771,21 +1771,6 @@ function glMouseMoveCallback(event)
 {
 	var midX = (canvas.width/2);
 	var midY = (canvas.height/2)-10;
-
-	/*if (event.which == 1)
-	{
-		cur_z_speed += 0.01;
-		amount_physically_move_spaceship.z = cur_z_speed;
-	}
-
-	if (event.which == 3)
-	{
-		if (amount_physically_move_spaceship.z > 0)
-		{
-			cur_z_speed -= 0.01;
-			amount_physically_move_spaceship.z = cur_z_speed;
-		}
-	}*/
 
 	if (!spaceship_close_to_planet && !animating.spaceship_orbiting_planet && !animating.spaceship_entry_to_orbit && !planet_view && !animating.spaceship_boom.bool)
 	{
@@ -1990,8 +1975,11 @@ function main()
 		console.log("amount = "+amount);
 		if (amount > 0)
 		{
-			cur_z_speed += 0.01;
-			amount_physically_move_spaceship.z = cur_z_speed;
+			if (cur_z_speed < 0.1)
+			{
+				cur_z_speed += 0.01;
+				amount_physically_move_spaceship.z = cur_z_speed;
+			}
 		}
 		else
 		{
