@@ -1952,7 +1952,7 @@ function main()
 	document.getElementById("modal_quick_links").style.display = "flex";
 	document.getElementById("modal_quick_links").style.position = "absolute";
 	document.getElementById("modal_quick_links").style.left = 10+"px";
-	document.getElementById("modal_quick_links").style.top = (window.innerHeight-310)+"px";
+	document.getElementById("modal_quick_links").style.top = (window.innerHeight-325)+"px";
 
 	showControlsSolarSystemViewModal();
 
